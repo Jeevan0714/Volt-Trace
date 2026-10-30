@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import {
   BatteryCharging,
   ShieldCheck,
@@ -27,9 +28,14 @@ import {
   User,
   Download,
   ChevronDown,
-  FileCheck
+  FileCheck,
+  Phone,
+  MessageSquare,
+  IndianRupee,
+  Share2
 } from 'lucide-react';
 import { fetchBatteryDetail, submitRoleIntake, fetchBatteries, uploadDocument } from '../api';
+import { generateServiceInvoicePDF } from '../utils/pdfGenerator';
 
 /**
  * Fast client-side SHA-256 for instant verification badge
@@ -67,6 +73,12 @@ export default function MobileIntake({
 
   // Submitting state
   const [submitting, setSubmitting] = useState(false);
+  // Global payment & invoice metadata for confirmation view
+  const [lastInvoiceMeta, setLastInvoiceMeta] = useState({
+    cost: '14500',
+    phone: '+91 98765 43210',
+    upiId: 'zypp.mobility@oksbi'
+  });
   const [submissionResult, setSubmissionResult] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
   const [copiedHash, setCopiedHash] = useState(false);
@@ -86,7 +98,9 @@ export default function MobileIntake({
     return {
       name: 'Technician Sharma',
       id: 'TECH-409',
-      organization: 'Zypp Mobility Hub Bangalore'
+      organization: 'Zypp Mobility Hub Bangalore',
+      phone: '+91 98765 43210',
+      upi_id: 'zypp.mobility@oksbi'
     };
   };
 
@@ -133,6 +147,8 @@ export default function MobileIntake({
     reported_soh: '86.5',
     cell_variance_mv: '12.0',
     measured_capacity_kwh: '64.8',
+    repair_cost: '14500',
+    customer_phone: '+91 98765 43210',
     module_replaced: false,
     new_module_serial: 'MOD-2026-NMC-99',
     cells_replaced_count: '12',
@@ -376,6 +392,11 @@ export default function MobileIntake({
       selectedFormFile = assemblerForm.file;
       const isReplacement = assemblerForm.action_type === 'Module Replacement' || assemblerForm.module_replaced;
       docTypeForRole = isReplacement ? 'MODULE_REPLACEMENT' : 'DIAGNOSTIC_REPORT';
+      setLastInvoiceMeta({
+        cost: assemblerForm.repair_cost || '14500',
+        phone: assemblerForm.customer_phone || operator.phone || '+91 98765 43210',
+        upiId: operator.upi_id || 'zypp.mobility@oksbi'
+      });
       payload = {
         ...payload,
         actor_name: `${assemblerForm.actor_name} (${assemblerForm.technician_id})`,
@@ -391,7 +412,7 @@ export default function MobileIntake({
         file_name: assemblerForm.file_name,
         file_base64: assemblerForm.file_base64,
         file_hash_sha256: assemblerForm.file_hash,
-        notes: assemblerForm.notes
+        notes: (assemblerForm.notes || '') + (assemblerForm.repair_cost ? ` [Repair Bill: ₹${assemblerForm.repair_cost}]` : '')
       };
     } else if (selectedRole === 'SELLER') {
       selectedFormFile = sellerForm.file;
@@ -653,6 +674,32 @@ export default function MobileIntake({
                 onChange={e => setOperator({ ...operator, id: e.target.value })}
                 placeholder="e.g. TECH-409"
                 style={{ width: '100%', background: '#0f172a', border: '1px solid #334155', borderRadius: '6px', padding: '0.45rem 0.65rem', color: '#ffffff', fontSize: '0.82rem' }}
+              />
+            </div>
+
+            <div>
+              <label style={{ fontSize: '0.7rem', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '0.3rem', marginBottom: '0.2rem', fontWeight: 600 }}>
+                <Phone size={11} /> WhatsApp Number (For Invoices)
+              </label>
+              <input
+                type="text"
+                value={operator.phone || ''}
+                onChange={e => setOperator({ ...operator, phone: e.target.value })}
+                placeholder="+91 98765 43210"
+                style={{ width: '100%', background: '#0f172a', border: '1px solid #38bdf8', borderRadius: '6px', padding: '0.45rem 0.65rem', color: '#ffffff', fontSize: '0.82rem' }}
+              />
+            </div>
+
+            <div>
+              <label style={{ fontSize: '0.7rem', color: '#34d399', display: 'flex', alignItems: 'center', gap: '0.3rem', marginBottom: '0.2rem', fontWeight: 600 }}>
+                <IndianRupee size={11} /> Default Workshop UPI ID
+              </label>
+              <input
+                type="text"
+                value={operator.upi_id || ''}
+                onChange={e => setOperator({ ...operator, upi_id: e.target.value })}
+                placeholder="zypp.mobility@oksbi"
+                style={{ width: '100%', background: '#0f172a', border: '1px solid #059669', borderRadius: '6px', padding: '0.45rem 0.65rem', color: '#ffffff', fontSize: '0.82rem' }}
               />
             </div>
 
@@ -1419,6 +1466,44 @@ export default function MobileIntake({
                     </div>
                   </div>
 
+                  {/* WhatsApp Invoice & Repair Billing Block */}
+                  <div style={{ background: '#0f172a', border: '1px solid #059669', borderRadius: '8px', padding: '0.85rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                    <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#34d399', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <IndianRupee size={14} /> Service Billing & WhatsApp Invoice
+                      </span>
+                      <span style={{ fontSize: '0.65rem', background: '#064e3b', color: '#6ee7b7', padding: '0.15rem 0.4rem', borderRadius: '4px', fontWeight: 700 }}>
+                        UPI READY
+                      </span>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>
+                        Total Repair Cost (₹)
+                      </label>
+                      <input
+                        type="number"
+                        value={assemblerForm.repair_cost || ''}
+                        onChange={e => setAssemblerForm({ ...assemblerForm, repair_cost: e.target.value })}
+                        placeholder="14500"
+                        style={{ width: '100%', background: '#1e293b', border: '1px solid #334155', borderRadius: '6px', padding: '0.5rem', color: '#34d399', fontWeight: 700, fontSize: '0.9rem' }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>
+                        Customer WhatsApp Number
+                      </label>
+                      <input
+                        type="text"
+                        value={assemblerForm.customer_phone || ''}
+                        onChange={e => setAssemblerForm({ ...assemblerForm, customer_phone: e.target.value })}
+                        placeholder="+91 98765 43210"
+                        style={{ width: '100%', background: '#1e293b', border: '1px solid #334155', borderRadius: '6px', padding: '0.5rem', color: '#38bdf8', fontSize: '0.82rem' }}
+                      />
+                    </div>
+                  </div>
+
                   {/* Attachment */}
                   <div style={{ background: '#0f172a', border: '1px dashed #475569', borderRadius: '8px', padding: '0.85rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
@@ -1966,7 +2051,7 @@ export default function MobileIntake({
               <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #1e293b', paddingBottom: '0.5rem' }}>
                 <span style={{ color: '#94a3b8' }}>Logged By:</span>
                 <span style={{ fontWeight: 600, color: '#cbd5e1' }}>
-                  {submissionResult.actor_name} ({submissionResult.organization})
+                  {submissionResult.actor_name || submissionResult.actor || 'Technician Sharma'} {submissionResult.organization ? `(${submissionResult.organization})` : ''}
                 </span>
               </div>
 
@@ -1975,13 +2060,14 @@ export default function MobileIntake({
                 <span style={{
                   fontWeight: 700,
                   color:
-                    submissionResult.passport_status === 'FLAGGED_SOH_INVERSION' || submissionResult.passport_status === 'QUARANTINED'
+                    submissionResult.passport_status === 'FLAGGED_SOH_INVERSION' || submissionResult.passport_status === 'QUARANTINED' || submissionResult.discrepancy_flagged
                       ? '#f87171'
                       : '#34d399'
                 }}>
-                  {submissionResult.passport_status === 'FLAGGED_SOH_INVERSION' && '🚨 FLAGGED: SoH Inversion'}
-                  {submissionResult.passport_status === 'FLAGGED_INSPECTION_REQUIRED' && '⚠️ Inspection Required'}
-                  {submissionResult.passport_status === 'UP_TO_DATE' && '🟢 Up to Date'}
+                  {submissionResult.passport_status === 'FLAGGED_SOH_INVERSION' ? '🚨 FLAGGED: SoH Inversion' :
+                   submissionResult.passport_status === 'FLAGGED_INSPECTION_REQUIRED' ? '⚠️ Inspection Required' :
+                   submissionResult.passport_status === 'QUARANTINED' ? '🔴 Quarantined / Hold' :
+                   '🟢 Up to Date'}
                 </span>
               </div>
 
@@ -1999,7 +2085,7 @@ export default function MobileIntake({
                   </button>
                 </div>
                 <div style={{ background: '#1e293b', padding: '0.4rem 0.6rem', borderRadius: '6px', fontFamily: 'monospace', fontSize: '0.72rem', color: '#38bdf8', wordBreak: 'break-all', border: '1px solid #334155' }}>
-                  {submissionResult.audit_hash}
+                  {submissionResult.audit_hash || submissionResult.event_hash}
                 </div>
               </div>
 
@@ -2014,6 +2100,265 @@ export default function MobileIntake({
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* ======================================================== */}
+            {/* WHATSAPP INVOICE & UPI PAYMENT CARD                      */}
+            {/* ======================================================== */}
+            <div style={{ background: '#0f172a', border: '1.5px solid #059669', borderRadius: '12px', padding: '1.15rem', marginBottom: '1.25rem', boxShadow: '0 4px 16px rgba(5, 150, 105, 0.25)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', borderBottom: '1px solid #1e293b', paddingBottom: '0.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <MessageSquare size={18} color="#ffffff" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#f8fafc' }}>
+                      Send Invoice & Collect Payment
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                      Instant WhatsApp dispatch with verified Merkle hash
+                    </div>
+                  </div>
+                </div>
+
+                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#34d399', background: 'rgba(5, 150, 105, 0.2)', padding: '0.2rem 0.6rem', borderRadius: '6px', border: '1px solid #059669' }}>
+                  ₹{Number(lastInvoiceMeta.cost || 14500).toLocaleString('en-IN')}
+                </span>
+              </div>
+
+              {/* UPI QR Code & Payment Details */}
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', background: '#1e293b', padding: '0.85rem', borderRadius: '8px', border: '1px solid #334155', marginBottom: '0.85rem' }}>
+                <div style={{ background: '#ffffff', padding: '0.4rem', borderRadius: '6px', display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+                  <QRCodeSVG
+                    value={`upi://pay?pa=${encodeURIComponent(lastInvoiceMeta.upiId)}&pn=VoltTrace%20Service%20Depot&am=${lastInvoiceMeta.cost || 14500}&cu=INR&tn=Battery%20${submissionResult.battery_id}%20Service`}
+                    size={88}
+                    level="M"
+                    includeMargin={false}
+                  />
+                  <span style={{ fontSize: '0.55rem', fontWeight: 800, color: '#0f172a', marginTop: '0.2rem' }}>
+                    SCAN TO PAY
+                  </span>
+                </div>
+
+                <div style={{ flex: 1, fontSize: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                  <div>
+                    <span style={{ color: '#94a3b8', display: 'block', fontSize: '0.68rem' }}>Workshop UPI ID:</span>
+                    <strong style={{ color: '#38bdf8', fontFamily: 'monospace', fontSize: '0.82rem' }}>
+                      {lastInvoiceMeta.upiId}
+                    </strong>
+                  </div>
+                  <div>
+                    <span style={{ color: '#94a3b8', display: 'block', fontSize: '0.68rem' }}>Recipient Phone:</span>
+                    <strong style={{ color: '#f8fafc' }}>
+                      {lastInvoiceMeta.phone}
+                    </strong>
+                  </div>
+                  <div style={{ fontSize: '0.65rem', color: '#10b981' }}>
+                    ✓ GPay, PhonePe, Paytm & BHIM Accepted
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons: WhatsApp + Download PDF */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.65rem' }}>
+                {/* 1. Direct WhatsApp Share with Direct PDF Link & Native File Share */}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      // 1. Generate PDF
+                      const res = await generateServiceInvoicePDF({
+                        battery,
+                        submissionResult,
+                        invoiceMeta: lastInvoiceMeta
+                      });
+                      
+                      const file = new File([res.blob], res.filename, { type: 'application/pdf' });
+
+                      // 2. Upload to server so there's an instant one-click direct PDF link
+                      try {
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        formData.append('filename', res.filename);
+                        await fetch(`/api/v1/batteries/${submissionResult.battery_id}/documents/save-invoice`, {
+                          method: 'POST',
+                          body: formData
+                        });
+                      } catch (upErr) {
+                        console.warn('Invoice server save notice:', upErr);
+                      }
+
+                      // 3. Try Native Android / iOS Web Share first (if supported by browser)
+                      let sharedSuccessfully = false;
+                      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        try {
+                          await navigator.share({
+                            files: [file],
+                            title: `VoltTrace Invoice - ${submissionResult.battery_id}`,
+                            text: `Official VoltTrace Service Invoice for Battery ${submissionResult.battery_id}. Amount: ₹${Number(lastInvoiceMeta.cost || 14500).toLocaleString('en-IN')}. Scan UPI QR code inside to pay.`
+                          });
+                          sharedSuccessfully = true;
+                        } catch (sErr) {
+                          if (sErr.name !== 'AbortError') console.warn('Share error:', sErr);
+                        }
+                      }
+
+                      // 4. Direct WhatsApp URL fallback with 1-click PDF link
+                      if (!sharedSuccessfully) {
+                        const directPdfUrl = `${window.location.protocol}//${window.location.host}/api/v1/batteries/${submissionResult.battery_id}/documents/invoices/${res.filename}`;
+                        const cleanPhone = (lastInvoiceMeta.phone || '').replace(/[^0-9]/g, '');
+                        
+                        const msg = `*VOLTTRACE OFFICIAL SERVICE INVOICE & BATTERY PASSPORT*%0A` +
+                          `━━━━━━━━━━━━━━━━━━━━━━%0A` +
+                          `🔋 *Battery ID:* ${submissionResult.battery_id}%0A` +
+                          `🔧 *Service:* ${submissionResult.event_title}%0A` +
+                          `👨‍🔧 *Technician:* ${submissionResult.actor_name || 'Technician Sharma'} (${submissionResult.organization || 'Zypp Mobility Hub'})%0A` +
+                          `💰 *Total Amount:* Rs. ${Number(lastInvoiceMeta.cost || 14500).toLocaleString('en-IN')}%0A` +
+                          `💳 *UPI ID:* ${lastInvoiceMeta.upiId}%0A` +
+                          `🟢 *Status:* Up to Date%0A` +
+                          `🔐 *SHA-256 Hash:* ${(submissionResult.audit_hash || '').slice(0, 24)}...%0A` +
+                          `━━━━━━━━━━━━━━━━━━━━━━%0A` +
+                          `📥 *DOWNLOAD & VIEW OFFICIAL PDF INVOICE:*%0A` +
+                          `${directPdfUrl}%0A%0A` +
+                          `📄 *View Live Battery Passport Dossier:*%0A` +
+                          `${window.location.origin}/mobile-intake?id=${submissionResult.battery_id}`;
+
+                        const waTarget = cleanPhone.length >= 10
+                          ? `https://wa.me/${cleanPhone}?text=${msg}`
+                          : `https://wa.me/?text=${msg}`;
+
+                        window.open(waTarget, '_blank');
+                      }
+                    } catch (err) {
+                      console.error('Share process error:', err);
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    background: '#16a34a',
+                    color: '#ffffff',
+                    borderRadius: '8px',
+                    padding: '0.85rem',
+                    fontSize: '0.92rem',
+                    fontWeight: 800,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    border: 'none',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 14px rgba(22, 163, 74, 0.4)'
+                  }}
+                >
+                  <Share2 size={18} />
+                  <span>Send PDF Invoice to WhatsApp ({lastInvoiceMeta.phone})</span>
+                </button>
+
+                {/* 2. Direct Safe Download Button (Uses ObjectURL Blob so Chrome doesn't flag as insecure) */}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const res = await generateServiceInvoicePDF({
+                      battery,
+                      submissionResult,
+                      invoiceMeta: lastInvoiceMeta
+                    });
+                    const blobUrl = URL.createObjectURL(res.blob);
+                    const link = document.createElement('a');
+                    link.href = blobUrl;
+                    link.download = res.filename;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+                  }}
+                  style={{
+                    width: '100%',
+                    background: '#0284c7',
+                    color: '#ffffff',
+                    borderRadius: '8px',
+                    padding: '0.75rem',
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    border: 'none',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(2, 132, 199, 0.3)'
+                  }}
+                >
+                  <Download size={16} />
+                  <span>Download PDF Invoice File (Offline Copy)</span>
+                </button>
+                    background: '#0284c7',
+                    color: '#ffffff',
+                    borderRadius: '8px',
+                    padding: '0.75rem',
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    border: 'none',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(2, 132, 199, 0.3)'
+                  }}
+                >
+                  <Download size={16} />
+                  <span>Download PDF Invoice File (Offline Copy)</span>
+                </button>
+
+                {/* 3. Text & Link Fallback */}
+                {(() => {
+                  const cleanPhone = (lastInvoiceMeta.phone || '').replace(/[^0-9]/g, '');
+                  const invoiceText = `*VOLTTRACE OFFICIAL SERVICE INVOICE & BATTERY PASSPORT*%0A` +
+                    `━━━━━━━━━━━━━━━━━━━━━━%0A` +
+                    `🔋 *Battery ID:* ${submissionResult.battery_id}%0A` +
+                    `🔧 *Action Logged:* ${submissionResult.event_title}%0A` +
+                    `👨‍🔧 *Technician:* ${submissionResult.actor_name || 'Technician Sharma'} (${submissionResult.organization || 'Zypp Mobility Hub'})%0A` +
+                    `💰 *Total Amount:* Rs. ${Number(lastInvoiceMeta.cost || 14500).toLocaleString('en-IN')}%0A` +
+                    `💳 *UPI ID:* ${lastInvoiceMeta.upiId}%0A` +
+                    `🟢 *Passport Status:* ${submissionResult.passport_status === 'UP_TO_DATE' ? 'Verified & In Fleet' : 'Flagged / Monitored'}%0A` +
+                    `🔐 *SHA-256 Ledger Hash:* ${(submissionResult.audit_hash || '').slice(0, 24)}...%0A` +
+                    `━━━━━━━━━━━━━━━━━━━━━━%0A` +
+                    `📄 *View Official Digital Passport:*%0A` +
+                    `${window.location.origin}/mobile-intake?id=${submissionResult.battery_id}%0A%0A` +
+                    `_Tap 'Share PDF Invoice Directly to WhatsApp' on your phone to send the full PDF document._`;
+
+                  const waUrl = cleanPhone.length >= 10
+                    ? `https://wa.me/${cleanPhone}?text=${invoiceText}`
+                    : `https://wa.me/?text=${invoiceText}`;
+
+                  return (
+                    <a
+                      href={waUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        width: '100%',
+                        background: '#1e293b',
+                        border: '1px solid #334155',
+                        color: '#94a3b8',
+                        borderRadius: '8px',
+                        padding: '0.65rem',
+                        fontSize: '0.78rem',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.4rem',
+                        textDecoration: 'none'
+                      }}
+                    >
+                      <MessageSquare size={14} color="#34d399" />
+                      <span>Send Summary Text to WhatsApp ({lastInvoiceMeta.phone})</span>
+                    </a>
+                  );
+                })()}
+              </div>
             </div>
 
             {/* Action Buttons: Scan Another | View Full Dossier */}

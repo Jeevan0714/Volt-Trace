@@ -187,3 +187,38 @@ def download_document(battery_id: str, doc_id: str, db: Session = Depends(get_db
         filename=doc.file_name,
         media_type="application/pdf"
     )
+
+@router.post("/save-invoice")
+async def save_invoice_pdf(
+    battery_id: str,
+    file: UploadFile = File(...),
+    filename: str = Form(...)
+):
+    clean_name = Path(filename).name
+    battery_storage = settings.DOCUMENT_STORAGE_DIR / battery_id
+    battery_storage.mkdir(parents=True, exist_ok=True)
+    dest_path = battery_storage / clean_name
+    
+    file_bytes = await file.read()
+    with open(dest_path, "wb") as f:
+        f.write(file_bytes)
+        
+    return {
+        "status": "SUCCESS",
+        "filename": clean_name,
+        "download_url": f"/api/v1/batteries/{battery_id}/documents/invoices/{clean_name}"
+    }
+
+@router.get("/invoices/{filename}")
+def download_generated_invoice(battery_id: str, filename: str):
+    # Prevent directory traversal
+    clean_name = Path(filename).name
+    invoice_path = settings.DOCUMENT_STORAGE_DIR / battery_id / clean_name
+    if not invoice_path.exists():
+        raise HTTPException(status_code=404, detail="Invoice file not found")
+
+    return FileResponse(
+        path=invoice_path,
+        filename=clean_name,
+        media_type="application/pdf"
+    )

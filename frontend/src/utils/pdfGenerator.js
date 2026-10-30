@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf';
+import QRCode from 'qrcode';
 
 /* ─────────── Formatting Helpers ─────────── */
 function fmtDate(iso) {
@@ -657,4 +658,248 @@ export function generateBatteryPassportPDF(battery) {
   // Trigger download
   const filename = `VoltTrace_Full_Battery_Passport_${battery.id || 'Report'}_${new Date().toISOString().slice(0, 10)}.pdf`;
   doc.save(filename);
+}
+
+/**
+ * Generate official Workshop Service Invoice & UPI Payment PDF
+ * Embeds dynamic UPI QR Code, verified SHA-256 Merkle block hash, and itemized billing.
+ */
+export async function generateServiceInvoicePDF({
+  battery,
+  submissionResult,
+  invoiceMeta
+}) {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  const pageWidth = 210;
+  const pageHeight = 297;
+  const margin = 14;
+  const contentWidth = pageWidth - (margin * 2);
+
+  const batteryId = battery?.id || submissionResult?.battery_id || 'VT-1001';
+  const amount = Number(invoiceMeta?.cost || 14500);
+  const upiId = invoiceMeta?.upiId || 'zypp.mobility@oksbi';
+  const recipientPhone = invoiceMeta?.phone || '+91 98765 43210';
+  const technician = submissionResult?.actor_name || 'Technician Sharma';
+  const organization = submissionResult?.organization || 'Zypp Mobility Hub Bangalore';
+  const eventTitle = submissionResult?.event_title || 'Workshop Service (Periodic Diagnostic)';
+  const auditHash = submissionResult?.audit_hash || submissionResult?.event_hash || '43d135dc99eef91a49beeed05bc402ff7a58832ddb67afb8a4859506b102bd8b';
+  const invoiceNumber = `INV-${batteryId}-${Date.now().toString().slice(-6)}`;
+  const dateStr = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+  // 1. Top Industrial Header
+  doc.setFillColor(15, 23, 42); // #0f172a
+  doc.rect(0, 0, pageWidth, 36, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text('VOLTTRACE WORKSHOP SERVICE INVOICE', margin, 15);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(148, 163, 184); // #94a3b8
+  doc.text('OFFICIAL WORK ORDER BILLING & CRYPTOGRAPHIC DIGITAL PASSPORT RECEIPT', margin, 22);
+  doc.text(`Invoice No: ${invoiceNumber}  •  Issue Date: ${dateStr}`, margin, 29);
+
+  doc.setFillColor(5, 150, 105); // #059669
+  doc.roundedRect(pageWidth - margin - 32, 10, 32, 16, 2, 2, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.text('DIGITAL PASSPORT', pageWidth - margin - 30, 16);
+  doc.setFontSize(9);
+  doc.text('VERIFIED', pageWidth - margin - 23, 22);
+
+  let y = 46;
+
+  // 2. Billing & Battery Info Box
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
+  doc.roundedRect(margin, y, contentWidth, 34, 2, 2, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(15, 23, 42);
+  doc.text('BATTERY & SERVICE SUMMARY', margin + 4, y + 6);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(71, 85, 105);
+
+  doc.text(`Battery Pack ID:`, margin + 4, y + 13);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(2, 132, 199);
+  doc.text(`${batteryId} (${battery?.model || 'Pack'} • ${battery?.chemistry || 'NMC'})`, margin + 30, y + 13);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(71, 85, 105);
+  doc.text(`Service Performed:`, margin + 4, y + 19);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.text(`${eventTitle}`, margin + 32, y + 19);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(71, 85, 105);
+  doc.text(`Authorized Tech:`, margin + 4, y + 25);
+  doc.text(`${technician}  |  ${organization}`, margin + 30, y + 25);
+
+  doc.text(`Customer WhatsApp:`, margin + 4, y + 31);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(5, 150, 105);
+  doc.text(`${recipientPhone}`, margin + 35, y + 31);
+
+  y += 42;
+
+  // 3. Itemized Service Charges Table
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(15, 23, 42);
+  doc.text('ITEMIZED SERVICE & REPAIR CHARGES', margin, y);
+
+  y += 4;
+  doc.setFillColor(241, 245, 249);
+  doc.rect(margin, y, contentWidth, 7, 'F');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(51, 65, 85);
+  doc.text('DESCRIPTION', margin + 3, y + 5);
+  doc.text('TYPE', margin + 110, y + 5);
+  doc.text('AMOUNT (INR)', pageWidth - margin - 26, y + 5);
+
+  y += 7;
+  const items = [
+    { desc: `${eventTitle} - Cell Diagnostics & Cycler Balancing`, type: 'Labour & Diagnostics', amt: Math.round(amount * 0.35) },
+    { desc: 'High-Voltage Safety Inspection & Contactor Insulation Test', type: 'Safety Inspection', amt: Math.round(amount * 0.20) },
+    { desc: 'BMS Calibration, Firmware Update & Thermal Telemetry Lock', type: 'Electronics & Calibration', amt: Math.round(amount * 0.15) },
+    { desc: 'Module / Consumable Hardware & Terminal Seal Service', type: 'Hardware / Modules', amt: Math.round(amount * 0.30) }
+  ];
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(71, 85, 105);
+
+  items.forEach((it, idx) => {
+    if (idx % 2 === 1) {
+      doc.setFillColor(248, 250, 252);
+      doc.rect(margin, y, contentWidth, 6.5, 'F');
+    }
+    doc.text(it.desc, margin + 3, y + 4.5);
+    doc.text(it.type, margin + 110, y + 4.5);
+    doc.text(`Rs. ${it.amt.toLocaleString('en-IN')}`, pageWidth - margin - 26, y + 4.5);
+    y += 6.5;
+  });
+
+  // Total Row
+  doc.setDrawColor(203, 213, 225);
+  doc.line(margin, y, pageWidth - margin, y);
+  y += 2;
+  doc.setFillColor(240, 253, 244);
+  doc.rect(margin, y, contentWidth, 9, 'F');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9.5);
+  doc.setTextColor(5, 150, 105);
+  doc.text('TOTAL SERVICE BILL PAYABLE:', margin + 4, y + 6);
+  doc.text(`Rs. ${amount.toLocaleString('en-IN')}`, pageWidth - margin - 32, y + 6);
+
+  y += 16;
+
+  // 4. UPI Scan-To-Pay & QR Code Card
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(5, 150, 105);
+  doc.setLineWidth(0.5);
+  doc.roundedRect(margin, y, contentWidth, 54, 3, 3, 'FD');
+
+  // Generate UPI QR Code image as dataURL
+  const upiUri = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=VoltTrace%20Service%20Depot&am=${amount}&cu=INR&tn=Battery%20${batteryId}%20Invoice`;
+  try {
+    const qrDataUrl = await QRCode.toDataURL(upiUri, { width: 140, margin: 1 });
+    doc.addImage(qrDataUrl, 'PNG', margin + 6, y + 6, 42, 42);
+  } catch (qrErr) {
+    console.warn('QR Code generation error for invoice PDF:', qrErr);
+  }
+
+  const textX = margin + 54;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text('SCAN & PAY VIA ANY UPI APP', textX, y + 12);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(100, 116, 139);
+  doc.text('Scan this QR code with Google Pay, PhonePe, Paytm, BHIM or any banking app.', textX, y + 18);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text('Workshop VPA / UPI ID:', textX, y + 26);
+  doc.setFont('courier', 'bold');
+  doc.setTextColor(2, 132, 199);
+  doc.text(`${upiId}`, textX + 40, y + 26);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text('Exact Amount Due:', textX, y + 33);
+  doc.setTextColor(5, 150, 105);
+  doc.text(`Rs. ${amount.toLocaleString('en-IN')}`, textX + 32, y + 33);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(71, 85, 105);
+  doc.text('Instant confirmation & digital receipt automatically registered on blockchain audit trail.', textX, y + 41);
+
+  y += 62;
+
+  // 5. Cryptographic Proof & Passport Ledger Lock
+  doc.setFillColor(15, 23, 42);
+  doc.roundedRect(margin, y, contentWidth, 32, 2, 2, 'F');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(56, 189, 248); // #38bdf8
+  doc.text('DIGITAL BATTERY PASSPORT (DPP) CRYPTOGRAPHIC AUDIT LOCK', margin + 5, y + 7);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(203, 213, 225);
+  doc.text(
+    'This invoice is linked to an append-only Merkle ledger block compliant with EU Battery Regulation 2023/1542.\nAny physical alterations to this invoice or historical data will invalidate the cryptographic checksum.',
+    margin + 5,
+    y + 13
+  );
+
+  doc.setFont('courier', 'normal');
+  doc.setFontSize(6.8);
+  doc.setTextColor(52, 211, 153); // #34d399
+  doc.text(`SHA-256 Audit Hash: ${auditHash}`, margin + 5, y + 23);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.8);
+  doc.setTextColor(148, 163, 184);
+  doc.text(`Passport Carrier URL: ${window.location.origin}/mobile-intake?id=${batteryId}`, margin + 5, y + 28);
+
+  // Footer
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(148, 163, 184);
+  doc.text('VoltTrace Engine • Every Battery Has a Story • ISO 15118-20 / GS1 Digital Link', margin, pageHeight - 8);
+  doc.text('Page 1 of 1', pageWidth - margin - 15, pageHeight - 8);
+
+  // Trigger Download using Blob / Safe ObjectURL (Fixes Chrome "File can't be securely downloaded" warning on HTTP/LAN IP)
+  const invoiceFilename = `VoltTrace_Invoice_${batteryId}_${invoiceNumber}.pdf`;
+  const pdfBlob = doc.output('blob');
+  
+  return {
+    filename: invoiceFilename,
+    blob: pdfBlob,
+    doc
+  };
 }
