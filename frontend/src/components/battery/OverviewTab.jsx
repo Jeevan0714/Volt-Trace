@@ -85,11 +85,19 @@ export default function OverviewTab({ battery, onNavigateTab, onOpenServiceModal
     ? [...battery.events].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0]
     : null;
 
-  // Physics violations check
+  // Hackathon Hurdle Detection (3 Pillars)
   const hasPhysicsIssue = battery.discrepancies?.some(d =>
-    ['DISC_VALID_SIG_IMPOSSIBLE_SOH', 'DISC_CYCLE_ROLLBACK', 'DISC_UNREALISTIC_FADE'].includes(d.code) &&
+    ['DISC_VALID_SIG_IMPOSSIBLE_SOH', 'DISC_CYCLE_ROLLBACK', 'DISC_UNREALISTIC_FADE', 'DISC_SOH_JUMP'].includes(d.code) &&
     d.status === 'UNRESOLVED'
+  ) || battery.has_physics_violation;
+
+  const hasModuleSwap = battery.has_module_replacement || battery.modules?.some(m => m.is_replaced) || battery.discrepancies?.some(d =>
+    d.code === 'DISC_MODULE_IMPEDANCE_MISMATCH' && d.status === 'UNRESOLVED'
   );
+
+  const buyerConf = battery.buyer_confidence || battery.triage?.buyer_confidence;
+  const hasHistoryHoles = (buyerConf?.max_gap_days > 90) || (buyerConf?.buyer_confidence_score < 60);
+  const isHurdleFlagship = hasPhysicsIssue || hasModuleSwap || hasHistoryHoles;
 
   return (
     <div className="overview-clean">
@@ -182,44 +190,161 @@ export default function OverviewTab({ battery, onNavigateTab, onOpenServiceModal
         </div>
       </div>
 
-      {/* ── SECTION 2: Alert Banner (only when issues exist) ── */}
-      {(unresolvedIssues.length > 0 || hasPhysicsIssue) && (
-        <div className="overview-alert-banner" style={{
-          background: hasPhysicsIssue ? '#fef2f2' : '#fffbeb',
-          borderColor: hasPhysicsIssue ? '#fecaca' : '#fde68a'
+      {/* ── SECTION 2: Hackathon Hurdle & Integrity Alerts ── */}
+      {(unresolvedIssues.length > 0 || isHurdleFlagship) && (
+        <div style={{
+          background: isHurdleFlagship ? '#fff1f2' : '#fffbeb',
+          border: `1.5px solid ${isHurdleFlagship ? '#fca5a5' : '#fde68a'}`,
+          borderRadius: '12px',
+          padding: '1.15rem 1.25rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.85rem'
         }}>
-          <div className="overview-alert-icon" style={{
-            background: hasPhysicsIssue ? '#fee2e2' : '#fef3c7',
-            color: hasPhysicsIssue ? '#dc2626' : '#d97706'
-          }}>
-            {hasPhysicsIssue ? <AlertCircle size={20} /> : <AlertTriangle size={20} />}
-          </div>
-          <div className="overview-alert-content">
-            <div className="overview-alert-title" style={{ color: hasPhysicsIssue ? '#991b1b' : '#92400e' }}>
-              {hasPhysicsIssue
-                ? 'Physics inconsistency detected — records need review'
-                : `${unresolvedIssues.length} issue${unresolvedIssues.length > 1 ? 's' : ''} need attention`
-              }
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{
+                background: isHurdleFlagship ? '#fee2e2' : '#fef3c7',
+                color: isHurdleFlagship ? '#dc2626' : '#d97706',
+                padding: '0.55rem',
+                borderRadius: '8px',
+                display: 'flex'
+              }}>
+                <AlertCircle size={22} />
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  {isHurdleFlagship && (
+                    <span style={{ fontSize: '0.68rem', fontWeight: 800, background: '#dc2626', color: '#ffffff', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>
+                      HACKATHON HURDLE AUDIT ACTIVE
+                    </span>
+                  )}
+                  <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800, color: isHurdleFlagship ? '#991b1b' : '#92400e' }}>
+                    {isHurdleFlagship
+                      ? 'Valid Signature, Impossible Battery & Provenance Anomaly Detected'
+                      : `${unresolvedIssues.length} issue${unresolvedIssues.length > 1 ? 's' : ''} require attention`
+                    }
+                  </h3>
+                </div>
+                <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: isHurdleFlagship ? '#7f1d1d' : '#b45309', lineHeight: 1.45 }}>
+                  {isHurdleFlagship
+                    ? 'Cryptographic authenticity cannot override the laws of thermodynamics. This battery contains signed data describing physically impossible behavior, unrecorded telematics gaps, or mismatched sub-components.'
+                    : 'Review recorded discrepancies and complete physical verification before authorizing second-life assignment.'
+                  }
+                </p>
+              </div>
             </div>
-            <div className="overview-alert-desc" style={{ color: hasPhysicsIssue ? '#b91c1c' : '#b45309' }}>
-              {hasPhysicsIssue
-                ? 'Signed data contains physically impossible values. Check the Physics Consistency tab for details.'
-                : 'Review and resolve before releasing this battery for its next use.'
-              }
-            </div>
+
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => onNavigateTab('issues')}
+              style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', color: '#991b1b', borderColor: '#fca5a5' }}
+            >
+              All Issues ({unresolvedIssues.length})
+            </button>
           </div>
-          <button
-            type="button"
-            className="overview-alert-action"
-            onClick={() => onNavigateTab(hasPhysicsIssue ? 'more_physics' : 'issues')}
-            style={{
-              color: hasPhysicsIssue ? '#dc2626' : '#d97706',
-              borderColor: hasPhysicsIssue ? '#fecaca' : '#fde68a'
-            }}
-          >
-            Review
-            <ChevronRight size={14} />
-          </button>
+
+          {/* 3 Hurdle Pill Action Links */}
+          {isHurdleFlagship && (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gap: '0.65rem',
+              paddingTop: '0.75rem',
+              borderTop: '1px solid rgba(239, 68, 68, 0.15)'
+            }}>
+              {hasPhysicsIssue && (
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab('issues')}
+                  style={{
+                    background: '#ffffff',
+                    border: '1px solid #fca5a5',
+                    borderRadius: '8px',
+                    padding: '0.6rem 0.85rem',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '0.5rem',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#dc2626' }}>
+                      1. PHYSICS PARADOX
+                    </div>
+                    <div style={{ fontSize: '0.76rem', color: '#1e293b', fontWeight: 600 }}>
+                      Impossible SoH / Rollback
+                    </div>
+                  </div>
+                  <ChevronRight size={15} color="#dc2626" />
+                </button>
+              )}
+
+              {hasModuleSwap && (
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab('history')}
+                  style={{
+                    background: '#ffffff',
+                    border: '1px solid #c4b5fd',
+                    borderRadius: '8px',
+                    padding: '0.6rem 0.85rem',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '0.5rem',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#6d28d9' }}>
+                      2. SUB-COMPONENT LINEAGE
+                    </div>
+                    <div style={{ fontSize: '0.76rem', color: '#1e293b', fontWeight: 600 }}>
+                      Swapped Module #4 (+118% IR)
+                    </div>
+                  </div>
+                  <ChevronRight size={15} color="#6d28d9" />
+                </button>
+              )}
+
+              {hasHistoryHoles && (
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab('issues')}
+                  style={{
+                    background: '#ffffff',
+                    border: '1px solid #bae6fd',
+                    borderRadius: '8px',
+                    padding: '0.6rem 0.85rem',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '0.5rem',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#0369a1' }}>
+                      3. BUYER CONFIDENCE
+                    </div>
+                    <div style={{ fontSize: '0.76rem', color: '#1e293b', fontWeight: 600 }}>
+                      {buyerConf?.max_gap_days || 420}-Day Telematics Hole
+                    </div>
+                  </div>
+                  <ChevronRight size={15} color="#0369a1" />
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -328,10 +453,10 @@ export default function OverviewTab({ battery, onNavigateTab, onOpenServiceModal
         <button
           type="button"
           className="overview-action-btn overview-action-secondary"
-          onClick={() => onNavigateTab('more_physics')}
+          onClick={() => onNavigateTab('issues')}
         >
           <Shield size={16} />
-          Physics Check
+          Physics & Issues
         </button>
       </div>
     </div>

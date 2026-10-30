@@ -23,9 +23,13 @@ import {
   AlertCircle,
   HelpCircle,
   RefreshCw,
-  Search
+  Search,
+  User,
+  Download,
+  ChevronDown,
+  FileCheck
 } from 'lucide-react';
-import { fetchBatteryDetail, submitRoleIntake, fetchBatteries } from '../api';
+import { fetchBatteryDetail, submitRoleIntake, fetchBatteries, uploadDocument } from '../api';
 
 /**
  * Fast client-side SHA-256 for instant verification badge
@@ -71,10 +75,41 @@ export default function MobileIntake({
   const [showBatteryPicker, setShowBatteryPicker] = useState(false);
   const [availableBatteries, setAvailableBatteries] = useState([]);
 
+  // Field Operator / Logged-in User State (persisted across QR scans)
+  const getInitialOperator = () => {
+    try {
+      const saved = localStorage.getItem('volttrace_operator');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // fallback
+    }
+    return {
+      name: 'Technician Sharma',
+      id: 'TECH-409',
+      organization: 'Zypp Mobility Hub Bangalore'
+    };
+  };
+
+  const [operator, setOperator] = useState(getInitialOperator);
+  const [operatorSavedToast, setOperatorSavedToast] = useState(false);
+  const [showRecentDocs, setShowRecentDocs] = useState(false);
+
+  // Direct Mobile PDF Upload State
+  const [directPdf, setDirectPdf] = useState({
+    file: null,
+    fileName: '',
+    fileSize: '',
+    fileHash: '',
+    documentType: 'DIAGNOSTIC_REPORT',
+    uploading: false,
+    uploadSuccess: null,
+    uploadError: null
+  });
+
   // Role 1: Manufacturer Form State
   const [mfgForm, setMfgForm] = useState({
-    actor_name: 'Lead Engineer Patel',
-    organization: 'VoltTrace Certified Gigafactory',
+    actor_name: operator.name || 'Lead Engineer Patel',
+    organization: operator.organization || 'VoltTrace Certified Gigafactory',
     factory_serial_number: 'VT-SN-2023-8891',
     cell_lot_id: 'LOT-NMC-B44',
     chemistry: 'NMC 811',
@@ -201,6 +236,83 @@ export default function MobileIntake({
     window.history.pushState({}, '', url);
   };
 
+  const handleSaveOperator = (e) => {
+    if (e) e.preventDefault();
+    try {
+      localStorage.setItem('volttrace_operator', JSON.stringify(operator));
+    } catch {}
+    setOperatorSavedToast(true);
+    setTimeout(() => setOperatorSavedToast(false), 2500);
+
+    // Sync into role forms
+    setMfgForm(prev => ({ ...prev, actor_name: operator.name, organization: operator.organization }));
+    setAssemblerForm(prev => ({ ...prev, actor_name: operator.name, technician_id: operator.id, organization: operator.organization }));
+    setSellerForm(prev => ({ ...prev, actor_name: operator.name, organization: operator.organization }));
+    setRecyclerForm(prev => ({ ...prev, actor_name: operator.name, organization: operator.organization }));
+  };
+
+  const handleDirectPdfChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const hash = await computeSha256Hex(file);
+      const sizeStr = file.size > 1024 * 1024
+        ? `${(file.size / (1024 * 1024)).toFixed(2)} MB`
+        : `${(file.size / 1024).toFixed(1)} KB`;
+
+      setDirectPdf(prev => ({
+        ...prev,
+        file,
+        fileName: file.name,
+        fileSize: sizeStr,
+        fileHash: hash,
+        uploadSuccess: null,
+        uploadError: null
+      }));
+    } catch (err) {
+      setDirectPdf(prev => ({
+        ...prev,
+        uploadError: 'Error reading file: ' + err.message
+      }));
+    }
+  };
+
+  const handleDirectPdfUpload = async (e) => {
+    e.preventDefault();
+    if (!directPdf.file) {
+      setDirectPdf(prev => ({ ...prev, uploadError: 'Please choose a PDF file first.' }));
+      return;
+    }
+
+    setDirectPdf(prev => ({ ...prev, uploading: true, uploadError: null, uploadSuccess: null }));
+    try {
+      const formData = new FormData();
+      formData.append('file', directPdf.file);
+      formData.append('document_type', directPdf.documentType);
+      formData.append('issuer_name', `${operator.name} (${operator.organization})`);
+
+      const res = await uploadDocument(currentBatteryId, formData);
+      setDirectPdf(prev => ({
+        ...prev,
+        uploading: false,
+        file: null,
+        fileName: '',
+        fileSize: '',
+        fileHash: '',
+        uploadSuccess: `Document "${res.file_name}" uploaded & cryptographically registered to ${currentBatteryId}! SHA-256: ${res.file_hash_sha256.slice(0, 16)}...`
+      }));
+      // Reload battery details so uploaded document appears in passport immediately
+      loadBattery(currentBatteryId);
+    } catch (err) {
+      setDirectPdf(prev => ({
+        ...prev,
+        uploading: false,
+        uploadError: err.message || 'PDF upload failed. Please try again.'
+      }));
+    }
+  };
+
   const handleFileUpload = async (e, formType) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -208,10 +320,14 @@ export default function MobileIntake({
     try {
       const hash = await computeSha256Hex(file);
       const b64 = await fileToBase64(file);
+      const sizeStr = file.size > 1024 * 1024
+        ? `${(file.size / (1024 * 1024)).toFixed(2)} MB`
+        : `${(file.size / 1024).toFixed(1)} KB`;
 
       const updateData = {
         file,
         file_name: file.name,
+        file_size: sizeStr,
         file_base64: b64,
         file_hash: hash
       };
@@ -234,8 +350,12 @@ export default function MobileIntake({
     let payload = {
       role: selectedRole,
     };
+    let selectedFormFile = null;
+    let docTypeForRole = 'DIAGNOSTIC_REPORT';
 
     if (selectedRole === 'MANUFACTURER') {
+      selectedFormFile = mfgForm.file;
+      docTypeForRole = 'BIRTH_CERTIFICATE';
       payload = {
         ...payload,
         actor_name: mfgForm.actor_name,
@@ -253,7 +373,9 @@ export default function MobileIntake({
         notes: mfgForm.notes
       };
     } else if (selectedRole === 'ASSEMBLER') {
+      selectedFormFile = assemblerForm.file;
       const isReplacement = assemblerForm.action_type === 'Module Replacement' || assemblerForm.module_replaced;
+      docTypeForRole = isReplacement ? 'MODULE_REPLACEMENT' : 'DIAGNOSTIC_REPORT';
       payload = {
         ...payload,
         actor_name: `${assemblerForm.actor_name} (${assemblerForm.technician_id})`,
@@ -272,6 +394,8 @@ export default function MobileIntake({
         notes: assemblerForm.notes
       };
     } else if (selectedRole === 'SELLER') {
+      selectedFormFile = sellerForm.file;
+      docTypeForRole = 'SERVICE_INVOICE';
       payload = {
         ...payload,
         actor_name: sellerForm.actor_name,
@@ -289,6 +413,8 @@ export default function MobileIntake({
         notes: sellerForm.notes
       };
     } else if (selectedRole === 'RECYCLER') {
+      selectedFormFile = recyclerForm.file;
+      docTypeForRole = 'INSPECTION_REPORT';
       const hasDefects = recyclerForm.swelling_detected || recyclerForm.corrosion_detected || recyclerForm.leak_detected;
       payload = {
         ...payload,
@@ -312,6 +438,20 @@ export default function MobileIntake({
 
     try {
       const response = await submitRoleIntake(currentBatteryId, payload);
+      
+      // If a file was attached, also upload to official document repository
+      if (selectedFormFile) {
+        try {
+          const docFormData = new FormData();
+          docFormData.append('file', selectedFormFile);
+          docFormData.append('document_type', docTypeForRole);
+          docFormData.append('issuer_name', `${operator.name} (${operator.organization})`);
+          await uploadDocument(currentBatteryId, docFormData);
+        } catch (uploadErr) {
+          console.warn('Attached document repository upload notice:', uploadErr);
+        }
+      }
+
       setSubmissionResult(response);
       setStep('CONFIRMATION');
       // Refresh current battery data in background
@@ -463,6 +603,280 @@ export default function MobileIntake({
         </div>
 
         {/* ======================================================== */}
+        {/* OPERATOR SESSION CARD (Who is Logged In)                 */}
+        {/* ======================================================== */}
+        <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '1rem', marginBottom: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', borderBottom: '1px solid #334155', paddingBottom: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'rgba(56, 189, 248, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <User size={16} color="#38bdf8" />
+              </div>
+              <div>
+                <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#f8fafc' }}>
+                  Field Operator Identity (Who is Logged In)
+                </div>
+                <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>
+                  Technician / Inspector credentials recorded on this passport
+                </div>
+              </div>
+            </div>
+
+            {operatorSavedToast && (
+              <span style={{ fontSize: '0.7rem', color: '#34d399', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <Check size={13} /> Saved!
+              </span>
+            )}
+          </div>
+
+          <form onSubmit={handleSaveOperator} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.65rem' }}>
+            <div>
+              <label style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>
+                Logged-in Technician / User *
+              </label>
+              <input
+                type="text"
+                required
+                value={operator.name}
+                onChange={e => setOperator({ ...operator, name: e.target.value })}
+                placeholder="e.g. Technician Sharma"
+                style={{ width: '100%', background: '#0f172a', border: '1px solid #334155', borderRadius: '6px', padding: '0.45rem 0.65rem', color: '#ffffff', fontSize: '0.82rem' }}
+              />
+            </div>
+
+            <div>
+              <label style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>
+                Technician ID / Badge #
+              </label>
+              <input
+                type="text"
+                value={operator.id}
+                onChange={e => setOperator({ ...operator, id: e.target.value })}
+                placeholder="e.g. TECH-409"
+                style={{ width: '100%', background: '#0f172a', border: '1px solid #334155', borderRadius: '6px', padding: '0.45rem 0.65rem', color: '#ffffff', fontSize: '0.82rem' }}
+              />
+            </div>
+
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'block', marginBottom: '0.2rem', fontWeight: 600 }}>
+                Service Hub / Workshop / Depot *
+              </label>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <input
+                  type="text"
+                  required
+                  value={operator.organization}
+                  onChange={e => setOperator({ ...operator, organization: e.target.value })}
+                  placeholder="e.g. Zypp Mobility Hub Bangalore"
+                  style={{ flex: 1, background: '#0f172a', border: '1px solid #334155', borderRadius: '6px', padding: '0.45rem 0.65rem', color: '#ffffff', fontSize: '0.82rem' }}
+                />
+                <button
+                  type="submit"
+                  style={{
+                    background: '#0284c7',
+                    border: 'none',
+                    color: '#ffffff',
+                    borderRadius: '6px',
+                    padding: '0.45rem 0.85rem',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  Save Identity
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        {/* ======================================================== */}
+        {/* DIRECT PDF / DOCUMENT UPLOAD CARD                        */}
+        {/* ======================================================== */}
+        <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '1.15rem', marginBottom: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', borderBottom: '1px solid #334155', paddingBottom: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'rgba(16, 185, 129, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <FileText size={16} color="#34d399" />
+              </div>
+              <div>
+                <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#f8fafc' }}>
+                  Upload Battery Report (PDF)
+                </div>
+                <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>
+                  Upload diagnostic test report, cycler trace, or invoice
+                </div>
+              </div>
+            </div>
+
+            {battery?.documents && battery.documents.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowRecentDocs(!showRecentDocs)}
+                style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: '0.72rem', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+              >
+                <span>{battery.documents.length} Saved</span>
+                <ChevronDown size={13} style={{ transform: showRecentDocs ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
+              </button>
+            )}
+          </div>
+
+          <form onSubmit={handleDirectPdfUpload} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div>
+              <label style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'block', marginBottom: '0.25rem', fontWeight: 600 }}>
+                Document Classification *
+              </label>
+              <select
+                value={directPdf.documentType}
+                onChange={e => setDirectPdf({ ...directPdf, documentType: e.target.value })}
+                style={{ width: '100%', background: '#0f172a', border: '1px solid #334155', borderRadius: '6px', padding: '0.5rem', color: '#ffffff', fontSize: '0.82rem' }}
+              >
+                <option value="DIAGNOSTIC_REPORT">Diagnostic Health Report (OBD / Cycler)</option>
+                <option value="SERVICE_INVOICE">Service & Maintenance Invoice</option>
+                <option value="MODULE_REPLACEMENT">Module / Cell Replacement Record</option>
+                <option value="INSPECTION_REPORT">Depot Inbound Inspection Triage</option>
+                <option value="BIRTH_CERTIFICATE">OEM Birth Certificate</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'block', marginBottom: '0.25rem', fontWeight: 600 }}>
+                Select File (PDF, Images, CSV) *
+              </label>
+              <div style={{
+                background: '#0f172a',
+                border: '1.5px dashed #475569',
+                borderRadius: '8px',
+                padding: '1rem',
+                textAlign: 'center',
+                position: 'relative'
+              }}>
+                <input
+                  type="file"
+                  required
+                  accept=".pdf,application/pdf,.png,.jpg,.jpeg,.csv"
+                  onChange={handleDirectPdfChange}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    opacity: 0,
+                    cursor: 'pointer'
+                  }}
+                />
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.35rem', pointerEvents: 'none' }}>
+                  <Upload size={24} color="#38bdf8" />
+                  <div style={{ fontSize: '0.84rem', fontWeight: 700, color: '#f8fafc' }}>
+                    {directPdf.fileName ? directPdf.fileName : 'Tap to Choose PDF / Document'}
+                  </div>
+                  <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>
+                    {directPdf.fileSize ? `Size: ${directPdf.fileSize} • Tap to change` : 'Supports PDF reports, scan photos, and cycler traces up to 15MB'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {directPdf.fileHash && (
+              <div style={{ background: '#0f172a', border: '1px solid #1e3a5f', borderRadius: '6px', padding: '0.45rem 0.65rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.7rem' }}>
+                <span style={{ color: '#94a3b8' }}>SHA-256 Fingerprint:</span>
+                <span style={{ color: '#34d399', fontFamily: 'monospace', fontWeight: 700 }}>
+                  {directPdf.fileHash.slice(0, 16)}...{directPdf.fileHash.slice(-8)}
+                </span>
+              </div>
+            )}
+
+            {directPdf.uploadSuccess && (
+              <div style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', borderRadius: '6px', padding: '0.6rem', color: '#34d399', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <CheckCircle2 size={16} />
+                <span>{directPdf.uploadSuccess}</span>
+              </div>
+            )}
+
+            {directPdf.uploadError && (
+              <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444', borderRadius: '6px', padding: '0.6rem', color: '#f87171', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <AlertCircle size={16} />
+                <span>{directPdf.uploadError}</span>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={directPdf.uploading || !directPdf.file}
+              style={{
+                background: directPdf.uploading || !directPdf.file ? '#334155' : 'linear-gradient(135deg, #10b981, #059669)',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '0.7rem',
+                fontSize: '0.85rem',
+                fontWeight: 700,
+                cursor: directPdf.uploading || !directPdf.file ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.4rem',
+                boxShadow: directPdf.file ? '0 2px 8px rgba(16, 185, 129, 0.3)' : 'none'
+              }}
+            >
+              <Upload size={16} />
+              <span>{directPdf.uploading ? 'Uploading & Calculating Checksum...' : 'Upload PDF to Battery Passport'}</span>
+            </button>
+          </form>
+
+          {showRecentDocs && battery?.documents && (
+            <div style={{ marginTop: '0.85rem', paddingTop: '0.85rem', borderTop: '1px solid #334155', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+              <div style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase' }}>
+                Saved Passport Documents ({battery.documents.length}):
+              </div>
+              {battery.documents.map((doc) => (
+                <div
+                  key={doc.id}
+                  style={{
+                    background: '#0f172a',
+                    border: '1px solid #334155',
+                    borderRadius: '6px',
+                    padding: '0.5rem 0.75rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    fontSize: '0.75rem'
+                  }}
+                >
+                  <div>
+                    <div style={{ color: '#f8fafc', fontWeight: 600 }}>{doc.file_name}</div>
+                    <div style={{ color: '#94a3b8', fontSize: '0.68rem' }}>
+                      {doc.document_type?.replace(/_/g, ' ')} • {doc.issuer_name}
+                    </div>
+                  </div>
+                  <a
+                    href={`/api/v1/batteries/${battery.id}/documents/${doc.id}/download`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      background: '#1e293b',
+                      border: '1px solid #334155',
+                      color: '#38bdf8',
+                      borderRadius: '4px',
+                      padding: '0.25rem 0.5rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      textDecoration: 'none',
+                      fontSize: '0.7rem',
+                      fontWeight: 600
+                    }}
+                  >
+                    <Download size={12} /> View
+                  </a>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ======================================================== */}
         {/* STEP 2: ROLE SELECTION ("Who are you?")                   */}
         {/* ======================================================== */}
         {step === 'SELECT_ROLE' && (
@@ -472,10 +886,10 @@ export default function MobileIntake({
                 Step 1 of 2
               </div>
               <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#ffffff', marginTop: '0.15rem' }}>
-                Who are you?
+                Role-Based Intake Workflows
               </h2>
               <p style={{ fontSize: '0.82rem', color: '#94a3b8', marginTop: '0.2rem' }}>
-                Select your operational role to load your personalized, high-speed intake form.
+                Select an operational role below to record certified service, transfers, or triage.
               </p>
             </div>
 
@@ -853,7 +1267,7 @@ export default function MobileIntake({
 
                   {/* Attachment */}
                   <div style={{ background: '#0f172a', border: '1px dashed #475569', borderRadius: '8px', padding: '0.85rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <Upload size={16} color="#38bdf8" />
                         <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#f8fafc' }}>
@@ -867,9 +1281,12 @@ export default function MobileIntake({
                         style={{ fontSize: '0.72rem', color: '#94a3b8', maxWidth: '200px' }}
                       />
                     </div>
-                    {mfgForm.file_hash && (
-                      <div style={{ marginTop: '0.45rem', fontSize: '0.68rem', color: '#34d399', fontFamily: 'monospace' }}>
-                        ✅ SHA-256 Checksum: {mfgForm.file_hash.slice(0, 24)}...{mfgForm.file_hash.slice(-8)}
+                    {mfgForm.file_name && (
+                      <div style={{ marginTop: '0.45rem', fontSize: '0.72rem', color: '#cbd5e1', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.3rem' }}>
+                        <span>📄 {mfgForm.file_name} ({mfgForm.file_size})</span>
+                        <span style={{ color: '#34d399', fontFamily: 'monospace' }}>
+                          ✅ SHA-256: {mfgForm.file_hash.slice(0, 16)}...
+                        </span>
                       </div>
                     )}
                   </div>
@@ -1004,7 +1421,7 @@ export default function MobileIntake({
 
                   {/* Attachment */}
                   <div style={{ background: '#0f172a', border: '1px dashed #475569', borderRadius: '8px', padding: '0.85rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <Upload size={16} color="#10b981" />
@@ -1018,14 +1435,17 @@ export default function MobileIntake({
                       </div>
                       <input
                         type="file"
-                        accept=".pdf,.csv,.json,.txt"
+                        accept=".pdf,.csv,.json,.txt,.png,.jpg"
                         onChange={e => handleFileUpload(e, 'assembler')}
-                        style={{ fontSize: '0.72rem', color: '#94a3b8', maxWidth: '180px' }}
+                        style={{ fontSize: '0.72rem', color: '#94a3b8', maxWidth: '200px' }}
                       />
                     </div>
-                    {assemblerForm.file_hash && (
-                      <div style={{ marginTop: '0.45rem', fontSize: '0.68rem', color: '#34d399', fontFamily: 'monospace' }}>
-                        ✅ SHA-256 Checksum: {assemblerForm.file_hash.slice(0, 24)}...{assemblerForm.file_hash.slice(-8)}
+                    {assemblerForm.file_name && (
+                      <div style={{ marginTop: '0.45rem', fontSize: '0.72rem', color: '#cbd5e1', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.3rem' }}>
+                        <span>📄 {assemblerForm.file_name} ({assemblerForm.file_size})</span>
+                        <span style={{ color: '#34d399', fontFamily: 'monospace' }}>
+                          ✅ SHA-256: {assemblerForm.file_hash.slice(0, 16)}...
+                        </span>
                       </div>
                     )}
                   </div>
@@ -1168,25 +1588,26 @@ export default function MobileIntake({
 
                   {/* Attachment */}
                   <div style={{ background: '#0f172a', border: '1px dashed #475569', borderRadius: '8px', padding: '0.85rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <Upload size={16} color="#fbbf24" />
-                          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#f8fafc' }}>
-                            Attachment: Sales Bill / Transfer of Custody Receipt
-                          </span>
-                        </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Upload size={16} color="#fbbf24" />
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#f8fafc' }}>
+                          Attachment: Sales Bill / Transfer of Custody Receipt (PDF)
+                        </span>
                       </div>
                       <input
                         type="file"
                         accept=".pdf,.png,.jpg,.jpeg"
                         onChange={e => handleFileUpload(e, 'seller')}
-                        style={{ fontSize: '0.72rem', color: '#94a3b8', maxWidth: '180px' }}
+                        style={{ fontSize: '0.72rem', color: '#94a3b8', maxWidth: '200px' }}
                       />
                     </div>
-                    {sellerForm.file_hash && (
-                      <div style={{ marginTop: '0.45rem', fontSize: '0.68rem', color: '#34d399', fontFamily: 'monospace' }}>
-                        ✅ SHA-256 Checksum: {sellerForm.file_hash.slice(0, 24)}...{sellerForm.file_hash.slice(-8)}
+                    {sellerForm.file_name && (
+                      <div style={{ marginTop: '0.45rem', fontSize: '0.72rem', color: '#cbd5e1', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.3rem' }}>
+                        <span>📄 {sellerForm.file_name} ({sellerForm.file_size})</span>
+                        <span style={{ color: '#34d399', fontFamily: 'monospace' }}>
+                          ✅ SHA-256: {sellerForm.file_hash.slice(0, 16)}...
+                        </span>
                       </div>
                     )}
                   </div>
@@ -1388,6 +1809,32 @@ export default function MobileIntake({
                         </div>
                       </label>
                     </div>
+                  </div>
+
+                  {/* Recycler Attachment */}
+                  <div style={{ background: '#0f172a', border: '1px dashed #475569', borderRadius: '8px', padding: '0.85rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Upload size={16} color="#ec4899" />
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#f8fafc' }}>
+                          Attachment: Depot Triage & Inspection Sheet (PDF / Image)
+                        </span>
+                      </div>
+                      <input
+                        type="file"
+                        accept=".pdf,.png,.jpg,.jpeg,.csv"
+                        onChange={e => handleFileUpload(e, 'recycler')}
+                        style={{ fontSize: '0.72rem', color: '#94a3b8', maxWidth: '200px' }}
+                      />
+                    </div>
+                    {recyclerForm.file_name && (
+                      <div style={{ marginTop: '0.45rem', fontSize: '0.72rem', color: '#cbd5e1', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.3rem' }}>
+                        <span>📄 {recyclerForm.file_name} ({recyclerForm.file_size})</span>
+                        <span style={{ color: '#34d399', fontFamily: 'monospace' }}>
+                          ✅ SHA-256: {recyclerForm.file_hash.slice(0, 16)}...
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </>
               )}

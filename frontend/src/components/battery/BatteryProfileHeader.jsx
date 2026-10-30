@@ -5,8 +5,10 @@ import {
   Wrench,
   AlertCircle,
   Upload,
-  CheckCircle2
+  CheckCircle2,
+  Download
 } from 'lucide-react';
+import { generateBatteryPassportPDF } from '../../utils/pdfGenerator';
 
 export default function BatteryProfileHeader({
   battery,
@@ -271,6 +273,24 @@ export default function BatteryProfileHeader({
           >
             <QrCode size={16} color="#64748B" />
             <span>View QR Code</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => generateBatteryPassportPDF(battery)}
+            className="btn btn-secondary"
+            title="Download complete multi-page PDF Battery Passport"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.45rem',
+              padding: '0.6rem 0.95rem',
+              fontSize: '0.85rem',
+              color: '#0F172A'
+            }}
+          >
+            <Download size={16} color="#4F46E5" />
+            <span>Export Full PDF</span>
           </button>
 
           {/* Contextual primary action */}

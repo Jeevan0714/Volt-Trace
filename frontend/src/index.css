@@ -328,9 +328,10 @@ input, select, textarea {
   gap: 0.35rem;
   border-bottom: 1px solid var(--border-color);
   margin-bottom: 1.25rem;
-  overflow-x: auto;
+  position: relative;
+  overflow: visible;
   padding-bottom: 0.25rem;
-  scrollbar-width: thin;
+  z-index: 40;
 }
 
 .tab-btn {
@@ -368,6 +369,7 @@ input, select, textarea {
 
 .tab-more-dropdown {
   position: relative;
+  z-index: 60;
 }
 
 .tab-dropdown-menu {
@@ -378,9 +380,9 @@ input, select, textarea {
   background: #ffffff;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
-  min-width: 240px;
-  z-index: 60;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.18), 0 8px 10px -6px rgba(0, 0, 0, 0.12);
+  min-width: 250px;
+  z-index: 9999;
   overflow: hidden;
   animation: fadeIn 0.15s ease forwards;
 }
