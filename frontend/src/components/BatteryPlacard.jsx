@@ -1,11 +1,11 @@
 import React from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Printer, Shield, CheckCircle2, BatteryCharging } from 'lucide-react';
+import { Printer, BatteryCharging, QrCode } from 'lucide-react';
 
 export default function BatteryPlacard({ battery }) {
   if (!battery) return null;
 
-  // The QR link points to the public digital passport URI
+  // The QR link points to the digital passport URI
   const passportUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/?id=${battery.id}`
     : `https://volttrace.io/passport/${battery.id}`;
@@ -31,7 +31,7 @@ export default function BatteryPlacard({ battery }) {
               </span>
             </div>
             <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
-              ISO 15118-20 • EU REGULATION 2023/1542 • INDIA BWMR 2022
+              DATA CARRIER IDENTIFIER • ISO 15118-20 • GS1 DIGITAL LINK
             </div>
           </div>
 
@@ -88,20 +88,19 @@ export default function BatteryPlacard({ battery }) {
               includeMargin={false}
             />
             <span style={{ fontSize: '0.65rem', color: '#0f172a', fontWeight: 700, marginTop: '0.4rem', letterSpacing: '0.05em' }}>
-              SCAN TO VERIFY
+              SCAN PASSPORT
             </span>
           </div>
         </div>
 
         <div style={{ marginTop: '1.25rem', paddingTop: '0.75rem', borderTop: '1px solid #334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.7rem', color: '#94a3b8' }}>
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <span style={{ border: '1px solid #64748b', padding: '0.15rem 0.4rem', borderRadius: '3px' }}>CE</span>
-            <span style={{ border: '1px solid #64748b', padding: '0.15rem 0.4rem', borderRadius: '3px' }}>UN 38.3</span>
-            <span style={{ border: '1px solid #64748b', padding: '0.15rem 0.4rem', borderRadius: '3px' }}>WEEE ♻️</span>
-            <span>EPR Reg: IND-BWMR-2022-841</span>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <span style={{ border: '1px solid #475569', padding: '0.15rem 0.4rem', borderRadius: '3px' }}>DPP Data Carrier</span>
+            <span style={{ border: '1px solid #475569', padding: '0.15rem 0.4rem', borderRadius: '3px' }}>SHA-256 Hashed</span>
+            <span>Record Reference: {battery.uuid?.slice(0, 18)}...</span>
           </div>
           <div>
-            <span>UUID: {battery.uuid?.slice(0, 24)}...</span>
+            <span>VoltTrace Ledger v1.0</span>
           </div>
         </div>
       </div>

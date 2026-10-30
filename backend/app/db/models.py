@@ -19,6 +19,7 @@ class Battery(Base):
     vehicle_info = Column(String(256), nullable=True)
     current_owner = Column(String(128), nullable=False)
     status = Column(String(64), default="active")  # active, quarantined, recycled
+    lifecycle_outcome = Column(String(64), default="PENDING_ASSESSMENT")  # PENDING_ASSESSMENT, SECOND_LIFE_DEPLOYED, RECYCLING_PROCESSED
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
@@ -27,6 +28,7 @@ class Battery(Base):
     documents = relationship("Document", back_populates="battery", cascade="all, delete-orphan", order_by="Document.uploaded_at.desc()")
     diagnostics = relationship("DiagnosticReport", back_populates="battery", cascade="all, delete-orphan", order_by="DiagnosticReport.test_date.desc()")
     discrepancies = relationship("Discrepancy", back_populates="battery", cascade="all, delete-orphan")
+    service_orders = relationship("ServiceWorkOrder", back_populates="battery", cascade="all, delete-orphan", order_by="ServiceWorkOrder.opened_at.desc()")
 
 class BatteryEvent(Base):
     __tablename__ = "battery_events"
@@ -132,3 +134,23 @@ class AuditEvent(Base):
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
     prev_hash = Column(String(64), nullable=False)
     event_hash = Column(String(64), nullable=False, unique=True)
+
+class ServiceWorkOrder(Base):
+    __tablename__ = "service_work_orders"
+
+    id = Column(String(64), primary_key=True, index=True)  # e.g. "WO-2026-0812"
+    battery_id = Column(String(64), ForeignKey("batteries.id", ondelete="CASCADE"), nullable=False, index=True)
+    service_center = Column(String(128), nullable=False)
+    technician_id = Column(String(64), nullable=False)
+    description = Column(Text, nullable=False)
+    status = Column(String(32), default="OPEN")  # OPEN, COMPLETED, BLOCKED
+    reported_soh = Column(Float, nullable=True)
+    measured_capacity_kwh = Column(Float, nullable=True)
+    cell_variance_mv = Column(Float, nullable=True)
+    diagnostic_document_id = Column(String(64), nullable=True)
+    action_taken = Column(Text, nullable=True)
+    notes = Column(Text, nullable=True)
+    opened_at = Column(DateTime, default=datetime.datetime.utcnow)
+    completed_at = Column(DateTime, nullable=True)
+
+    battery = relationship("Battery", back_populates="service_orders")

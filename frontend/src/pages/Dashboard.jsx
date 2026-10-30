@@ -11,6 +11,7 @@ import {
   XCircle,
   FileCheck,
   Zap,
+  Activity,
   Sparkles
 } from 'lucide-react';
 import { fetchStatsSummary, fetchBatteries } from '../api';
@@ -54,20 +55,20 @@ export default function Dashboard({ onSelectBattery }) {
       <div style={{ background: 'linear-gradient(135deg, #1e293b, #0f172a)', color: '#ffffff', padding: '1.75rem 2rem', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.25rem', boxShadow: 'var(--shadow-md)' }}>
         <div>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', padding: '0.2rem 0.6rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.6rem' }}>
-            <Sparkles size={13} />
-            TRIAGE & TRUST LAYER FOR TESTING
+            <Activity size={13} />
+            BATTERY HISTORY VERIFICATION & TESTING-PRIORITISATION
           </div>
           <h2 style={{ fontSize: '1.65rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
-            EV Battery Passport & Provenance Registry
+            Used EV Battery Passport & Triage Registry
           </h2>
           <p style={{ color: '#94a3b8', fontSize: '0.9rem', maxWidth: '620px', marginTop: '0.25rem' }}>
-            Screening inbound packs for reuse, second-life stationary storage, and recycling.
-            Compliant with EU Regulation 2023/1542 & India Battery Waste Management Rules 2022.
+            Screening inbound packs for reuse, second-life evaluation, and recycling without pretending to certify safety.
+            Organising evidence, verifying file integrity, and prioritising physical testing.
           </p>
         </div>
 
         {/* Quick Demo Shortcuts for Evaluators */}
-        <div style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', padding: '1rem', borderRadius: '12px', minWidth: '280px' }}>
+        <div style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', padding: '1rem', borderRadius: '12px', minWidth: '300px' }}>
           <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
             LIVE DEMO QUICK SCENARIOS:
           </div>
@@ -77,7 +78,7 @@ export default function Dashboard({ onSelectBattery }) {
               className="btn btn-secondary"
               style={{ background: '#1e293b', color: '#34d399', borderColor: '#059669', fontSize: '0.8rem', justifyContent: 'space-between' }}
             >
-              <span>✅ VT-1001 (Clean / High-Trust)</span>
+              <span>✅ VT-1001 (Complete & Consistent)</span>
               <ArrowRight size={14} />
             </button>
             <button
@@ -103,7 +104,7 @@ export default function Dashboard({ onSelectBattery }) {
             <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)' }}>
               {stats.total_batteries}
             </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Across connected fleets & depots</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Across fleet depots and workshops</div>
           </div>
 
           <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
@@ -114,7 +115,7 @@ export default function Dashboard({ onSelectBattery }) {
             <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--verified-green)' }}>
               {stats.complete_records_count}
             </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Both documents & diagnostics attached</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Documents & diagnostics attached</div>
           </div>
 
           <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
@@ -189,9 +190,9 @@ export default function Dashboard({ onSelectBattery }) {
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <h3 style={{ fontSize: '1.15rem', fontWeight: 800 }}>Battery Registry & Triage Status</h3>
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 800 }}>Battery Registry & 3-Pillar Assessment</h3>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              Click any battery row to view its complete 9-section passport and verification dossier.
+              Click any battery row to view its full dossier, tamper simulator, and testing-prioritisation report.
             </p>
           </div>
           <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
@@ -208,10 +209,10 @@ export default function Dashboard({ onSelectBattery }) {
                 <th>Chemistry & Rating</th>
                 <th>Fleet Owner</th>
                 <th>Latest SoH</th>
-                <th>Evidence Quality</th>
-                <th>Integrity</th>
-                <th>Issues</th>
-                <th>Triage Destination</th>
+                <th>Pillar 1: Integrity</th>
+                <th>Pillar 2: Evidence</th>
+                <th>Pillar 3: Recommended Action</th>
+                <th>Suitability Assessment</th>
                 <th style={{ textAlign: 'right' }}>Action</th>
               </tr>
             </thead>
@@ -260,29 +261,27 @@ export default function Dashboard({ onSelectBattery }) {
                       )}
                     </td>
                     <td>
-                      <span className={`badge ${b.evidence_score >= 80 ? 'badge-green' : b.evidence_score >= 50 ? 'badge-amber' : 'badge-red'}`}>
-                        {b.evidence_score}/100
-                      </span>
-                    </td>
-                    <td>
                       {b.integrity_status === 'MATCHED' ? (
-                        <span className="badge badge-green"><CheckCircle2 size={12} /> Matched</span>
+                        <span className="badge badge-green"><CheckCircle2 size={12} /> Verified</span>
                       ) : b.integrity_status === 'MISMATCH_DETECTED' ? (
                         <span className="badge badge-red"><XCircle size={12} /> Mismatch</span>
                       ) : (
-                        <span className="badge badge-neutral">Pending</span>
+                        <span className="badge badge-neutral">No Ref</span>
                       )}
                     </td>
                     <td>
-                      {b.unresolved_issues_count > 0 ? (
-                        <span className="badge badge-red">{b.unresolved_issues_count} Active</span>
-                      ) : (
-                        <span className="badge badge-green">Clean</span>
-                      )}
+                      <span className={`badge ${b.evidence_score >= 80 ? 'badge-green' : b.evidence_score >= 50 ? 'badge-amber' : 'badge-red'}`}>
+                        {b.evidence_quality_label}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`badge ${b.next_action_code === 'HOLD_FOR_INVESTIGATION' ? 'badge-red' : b.next_action_code === 'FURTHER_INSPECTION' ? 'badge-amber' : 'badge-green'}`}>
+                        {b.next_action_label}
+                      </span>
                     </td>
                     <td>
                       <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                        {b.triage_category}
+                        {b.suitability_label}
                       </span>
                     </td>
                     <td style={{ textAlign: 'right' }}>
@@ -297,51 +296,6 @@ export default function Dashboard({ onSelectBattery }) {
           </table>
         </div>
       </div>
-
-      {/* Recent Ledger Activity */}
-      {stats && stats.recent_activity?.length > 0 && (
-        <div className="card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-            <Clock size={18} color="var(--primary)" />
-            <h3 style={{ fontSize: '1.05rem', fontWeight: 800 }}>Recent Ledger & Passport Events</h3>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.85rem' }}>
-            {stats.recent_activity.map((evt) => (
-              <div
-                key={evt.id}
-                onClick={() => onSelectBattery(evt.battery_id)}
-                style={{
-                  background: 'var(--bg-app)',
-                  padding: '0.85rem',
-                  borderRadius: '10px',
-                  border: '1px solid var(--border-color)',
-                  cursor: 'pointer',
-                  transition: 'transform 0.15s ease'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                  <span style={{ fontWeight: 800, fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--primary)' }}>
-                    {evt.battery_id}
-                  </span>
-                  <span className={`badge ${evt.verification_status === 'VERIFIED' ? 'badge-green' : evt.verification_status === 'FAILED' ? 'badge-red' : 'badge-neutral'}`}>
-                    {evt.verification_status}
-                  </span>
-                </div>
-                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                  {evt.title}
-                </div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
-                  {evt.description}
-                </div>
-                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
-                  By {evt.submitting_org} • {new Date(evt.timestamp).toLocaleString()}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

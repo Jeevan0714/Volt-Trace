@@ -51,10 +51,10 @@ def list_batteries(
         # Unresolved issues
         unresolved_count = sum(1 for d in b.discrepancies if d.status == "UNRESOLVED")
         
-        # Evidence score
+        # Evidence quality score
         ev_quality = rules_engine.calculate_evidence_quality_score(b)
         
-        # Triage
+        # 3-Pillar Triage Output
         triage = triage_engine.evaluate_second_life_triage(b)
 
         results.append(schemas.BatteryListItem(
@@ -72,9 +72,13 @@ def list_batteries(
             latest_soh_date=latest_diag.test_date.strftime("%Y-%m-%d") if latest_diag else None,
             completeness_status=completeness,
             integrity_status=integrity_status,
+            integrity_label=triage["record_integrity"]["label"],
             unresolved_issues_count=unresolved_count,
             evidence_score=ev_quality["score"],
-            triage_category=triage["title"]
+            evidence_quality_label=triage["evidence_quality"]["label"],
+            next_action_label=triage["next_action"]["label"],
+            next_action_code=triage["next_action"]["code"],
+            suitability_label=triage["suitability"]["label"]
         ))
 
     return results
@@ -128,12 +132,12 @@ def get_battery(battery_id: str, db: Session = Depends(get_db)):
                 "updated_at": r.updated_at.strftime("%Y-%m-%d")
             } for r in recalls
         ],
-        "dataset_source": "NHTSA / MoRTH Configured Technical Safety Bulletins (Live Demonstration Dataset)",
+        "dataset_source": "NHTSA / MoRTH Configured Technical Safety Bulletins (Demonstration Dataset)",
         "last_updated": "2026-10-15",
         "disclaimer": "Recall check matches against the configured demonstration dataset. Absence of a match is not proof that the battery is free of manufacturer defects."
     }
 
-    # Evaluate Triage & Valuation
+    # Evaluate 3-Pillar Triage & Valuation
     triage = triage_engine.evaluate_second_life_triage(battery)
     valuation = triage_engine.calculate_indicative_valuation(battery)
 

@@ -201,7 +201,7 @@ export default function BatteryDetail({ batteryId, onBack }) {
           Overview & Placard
         </button>
         <button className={`tab-btn ${activeTab === 'triage' ? 'active' : ''}`} onClick={() => setActiveTab('triage')}>
-          2nd-Life Triage & Valuation
+          3-Pillar Assessment & Triage
         </button>
         <button className={`tab-btn ${activeTab === 'passport' ? 'active' : ''}`} onClick={() => setActiveTab('passport')}>
           Timeline Events ({battery.events?.length || 0})

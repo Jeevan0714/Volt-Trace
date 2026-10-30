@@ -1,126 +1,198 @@
 import React from 'react';
-import { Sun, Radio, Truck, Zap, Recycle, AlertTriangle, ShieldCheck, Clock, Sparkles } from 'lucide-react';
+import {
+  ShieldCheck,
+  AlertTriangle,
+  Clock,
+  FileCheck,
+  CheckCircle2,
+  XCircle,
+  HelpCircle,
+  Activity,
+  ArrowRight,
+  ListChecks,
+  AlertCircle
+} from 'lucide-react';
 
 export default function TriageDecisionCard({ triage, valuation }) {
   if (!triage) return null;
 
-  const getStreamBadge = (stream) => {
-    if (stream?.includes('Stream A')) {
-      return <span className="badge badge-green"><ShieldCheck size={13} /> {stream}</span>;
-    }
-    if (stream?.includes('Stream B')) {
-      return <span className="badge badge-amber"><Clock size={13} /> {stream}</span>;
-    }
-    return <span className="badge badge-red"><AlertTriangle size={13} /> {stream}</span>;
-  };
-
-  const getIcon = (code) => {
-    switch (code) {
-      case 'COMMERCIAL_BESS':
-        return <Sun size={28} color="#059669" />;
-      case 'TELECOM_UPS_BACKUP':
-        return <Radio size={28} color="#0284c7" />;
-      case 'LOW_SPEED_EV':
-        return <Truck size={28} color="#d97706" />;
-      case 'SOLAR_STREETLIGHT':
-        return <Zap size={28} color="#2563eb" />;
-      default:
-        return <Recycle size={28} color="#dc2626" />;
-    }
-  };
+  const { record_integrity, evidence_quality, next_action, suitability } = triage;
 
   return (
-    <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem' }}>
-        <div>
-          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            SECOND-LIFE APPLICATION MATCHING & TRIAGE
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      {/* 3-PILLAR DECISION FRAMEWORK */}
+      <div className="card" style={{ padding: '1.5rem' }}>
+        <div style={{ marginBottom: '1.25rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--primary)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <Activity size={14} />
+            EVIDENCE-BASED TESTING & TRIAGE DECISION
           </div>
           <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '0.2rem' }}>
-            {triage.title}
+            The 3-Pillar Assessment
           </h2>
-        </div>
-        {getStreamBadge(triage.stream)}
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', background: 'var(--bg-card-subtle)', padding: '1rem', borderRadius: '10px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div style={{ background: '#ffffff', padding: '0.65rem', borderRadius: '8px', boxShadow: 'var(--shadow-sm)' }}>
-            {getIcon(triage.category_code)}
-          </div>
-          <div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Target Application</div>
-            <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>{triage.target_application}</div>
-          </div>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            Independent evaluation of document validity, historical completeness, and operational next steps.
+          </p>
         </div>
 
-        <div>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Projected 2nd-Life Span</div>
-          <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary)' }}>
-            {triage.projected_life_years > 0 ? `${triage.projected_life_years} Years` : '0 (End-of-Life)'}
-          </div>
-        </div>
+        {/* The 3 Pillars Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
+          {/* PILLAR 1: RECORD INTEGRITY */}
+          <div style={{ background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1.25rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                  Pillar 1: Record Integrity
+                </span>
+                <span className={`badge ${record_integrity.badge_class}`}>
+                  {record_integrity.status === 'VERIFIED_MATCH' ? <CheckCircle2 size={12} /> : record_integrity.status === 'MISMATCH_DETECTED' ? <XCircle size={12} /> : <HelpCircle size={12} />}
+                  {record_integrity.status.replace(/_/g, ' ')}
+                </span>
+              </div>
 
-        <div>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Safety Clearance Status</div>
-          <div style={{ fontSize: '0.85rem', fontWeight: 700, color: triage.safety_status.includes('APPROVED') ? 'var(--verified-green)' : 'var(--danger-red)' }}>
-            {triage.safety_status.replace(/_/g, ' ')}
-          </div>
-        </div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.4rem' }}>
+                {record_integrity.label}
+              </div>
 
-        {valuation && (
-          <div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Indicative Value Band</div>
-            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: valuation.status === 'VALUATION_ON_HOLD' ? 'var(--danger-red)' : 'var(--text-primary)' }}>
-              {valuation.formatted_range}
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                {record_integrity.details}
+              </p>
             </div>
-            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{valuation.confidence_label}</div>
-          </div>
-        )}
-      </div>
 
-      <div>
-        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
-          ENGINEERING RATIONALE & SAFETY PROTOCOL
+            <div style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-color)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+              Verified via bitwise SHA-256 & Ed25519 signature checks
+            </div>
+          </div>
+
+          {/* PILLAR 2: EVIDENCE QUALITY */}
+          <div style={{ background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1.25rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                  Pillar 2: Evidence Quality
+                </span>
+                <span className={`badge ${evidence_quality.badge_class}`}>
+                  {evidence_quality.label}
+                </span>
+              </div>
+
+              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.4rem' }}>
+                {evidence_quality.label}
+              </div>
+
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                {evidence_quality.summary}
+              </p>
+            </div>
+
+            <div style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-color)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+              Evaluates chronological consistency, missing invoices & anomalies
+            </div>
+          </div>
+
+          {/* PILLAR 3: RECOMMENDED NEXT ACTION */}
+          <div style={{ background: next_action.urgency === 'CRITICAL' ? 'var(--danger-red-bg)' : next_action.urgency === 'ATTENTION' ? 'var(--warning-amber-bg)' : 'var(--verified-green-bg)', border: `1px solid ${next_action.urgency === 'CRITICAL' ? 'var(--danger-red-border)' : next_action.urgency === 'ATTENTION' ? 'var(--warning-amber-border)' : 'var(--verified-green-border)'}`, borderRadius: '12px', padding: '1.25rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: next_action.urgency === 'CRITICAL' ? 'var(--danger-red)' : next_action.urgency === 'ATTENTION' ? 'var(--warning-amber)' : 'var(--verified-green)', textTransform: 'uppercase' }}>
+                  Pillar 3: Recommended Next Action
+                </span>
+                <span className={`badge ${next_action.badge_class}`}>
+                  {next_action.urgency}
+                </span>
+              </div>
+
+              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: next_action.urgency === 'CRITICAL' ? '#7f1d1d' : next_action.urgency === 'ATTENTION' ? '#78350f' : '#065f46', marginBottom: '0.4rem' }}>
+                {next_action.label}
+              </div>
+
+              <p style={{ fontSize: '0.82rem', color: next_action.urgency === 'CRITICAL' ? '#991b1b' : next_action.urgency === 'ATTENTION' ? '#92400e' : '#047857', lineHeight: 1.5 }}>
+                {next_action.instruction}
+              </p>
+            </div>
+
+            <div style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(0,0,0,0.08)', fontSize: '0.7rem', fontWeight: 600, color: next_action.urgency === 'CRITICAL' ? '#b91c1c' : '#065f46' }}>
+              Action required before commercial transfer or second-life deployment
+            </div>
+          </div>
         </div>
-        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-          {triage.rationale}
-        </p>
       </div>
 
-      {triage.ai_advisory && (
-        <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#7c3aed', marginBottom: '0.5rem', fontWeight: 700, fontSize: '0.85rem' }}>
-            <Sparkles size={16} />
-            <span>AI Techno-Economic Advisory ({triage.ai_advisory.mode})</span>
+      {/* SECOND-LIFE SUITABILITY ASSESSMENT (CONDITIONAL) */}
+      {suitability && (
+        <div className="card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem' }}>
+            <div>
+              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                SECOND-LIFE SUITABILITY ASSESSMENT
+              </span>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '0.2rem' }}>
+                {suitability.label}
+              </h3>
+            </div>
+
+            <span className={`badge ${suitability.status.includes('CANDIDATE') ? 'badge-green' : suitability.status.includes('NOT_DETERMINED') ? 'badge-red' : 'badge-amber'}`}>
+              {suitability.status.replace(/_/g, ' ')}
+            </span>
           </div>
 
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.65rem', fontStyle: 'italic' }}>
-            "{triage.ai_advisory.executive_summary}"
+          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '1.25rem' }}>
+            {suitability.notes}
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.75rem', background: '#faf5ff', border: '1px solid #f3e8ff', borderRadius: '8px', padding: '0.85rem' }}>
-            <div>
-              <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#6b21a8', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
-                Technical Considerations
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
+            {/* Potential Applications to Evaluate */}
+            {suitability.potential_applications_to_evaluate?.length > 0 && (
+              <div style={{ background: 'var(--bg-card-subtle)', padding: '1rem', borderRadius: '10px' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <ArrowRight size={14} /> Potential Applications to Evaluate (Not Pre-Approved)
+                </div>
+                <ul style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', paddingLeft: '1.25rem', lineHeight: 1.6 }}>
+                  {suitability.potential_applications_to_evaluate.map((app, idx) => (
+                    <li key={idx} style={{ marginBottom: '0.25rem' }}>{app}</li>
+                  ))}
+                </ul>
               </div>
-              <ul style={{ fontSize: '0.78rem', color: '#4c1d95', paddingLeft: '1rem', lineHeight: 1.5 }}>
-                {triage.ai_advisory.technical_considerations?.map((item, idx) => (
-                  <li key={idx}>{item}</li>
-                ))}
-              </ul>
+            )}
+
+            {/* Missing Evidence / Pre-requisite Checklist */}
+            {suitability.missing_evidence_checklist?.length > 0 && (
+              <div style={{ background: 'var(--bg-card-subtle)', padding: '1rem', borderRadius: '10px' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--warning-amber)', textTransform: 'uppercase', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <ListChecks size={14} /> Outstanding Tests Required Prior to Second-Life Deployment
+                </div>
+                <ul style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', paddingLeft: '1.25rem', lineHeight: 1.6 }}>
+                  {suitability.missing_evidence_checklist.map((item, idx) => (
+                    <li key={idx} style={{ marginBottom: '0.25rem' }}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          <div style={{ marginTop: '1.25rem', paddingTop: '0.85rem', borderTop: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            <AlertCircle size={15} color="var(--text-muted)" />
+            <span>{suitability.disclaimer}</span>
+          </div>
+        </div>
+      )}
+
+      {/* SYNTHETIC VALUATION BENCHMARK (CLEARLY LABELED AS ILLUSTRATIVE) */}
+      {valuation && (
+        <div className="card" style={{ background: 'var(--bg-app)', border: '1px solid var(--border-color)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <div>
+              <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                OPTIONAL SYNTHETIC MARKET BENCHMARK (ILLUSTRATIVE ONLY)
+              </span>
+              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: valuation.status === 'VALUATION_ON_HOLD' ? 'var(--danger-red)' : 'var(--text-primary)', marginTop: '0.1rem' }}>
+                {valuation.formatted_range}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{valuation.confidence_label}</div>
             </div>
 
-            <div>
-              <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#6b21a8', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
-                Economic & Environmental Payback
-              </div>
-              <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#581c87', marginBottom: '0.25rem' }}>
-                {triage.ai_advisory.economic_projection}
-              </div>
-              <div style={{ fontSize: '0.75rem', color: '#7e22ce' }}>
-                🌿 Estimated Carbon Avoidance: <strong>{triage.ai_advisory.carbon_offset_kg_co2} kg CO₂</strong> vs manufacturing new pack.
-              </div>
+            <div style={{ maxWidth: '480px', fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+              <strong>Notice:</strong> {valuation.notes} {valuation.disclaimer}
             </div>
           </div>
         </div>

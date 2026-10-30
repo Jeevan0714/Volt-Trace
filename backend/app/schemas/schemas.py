@@ -112,11 +112,55 @@ class BatteryListItem(BaseModel):
     latest_soh: Optional[float] = None
     latest_soh_source: Optional[str] = None
     latest_soh_date: Optional[str] = None
-    completeness_status: str  # Complete, Incomplete
-    integrity_status: str     # Matched, Mismatch Detected, Pending
+    completeness_status: str
+    integrity_status: str
+    integrity_label: str
     unresolved_issues_count: int
     evidence_score: int
-    triage_category: str
+    evidence_quality_label: str
+    next_action_label: str
+    next_action_code: str
+    suitability_label: str
+    lifecycle_outcome: Optional[str] = "PENDING_ASSESSMENT"
+
+# --- Service Work Order Schemas ---
+class ServiceWorkOrderResponse(BaseModel):
+    id: str
+    battery_id: str
+    service_center: str
+    technician_id: str
+    description: str
+    status: str
+    reported_soh: Optional[float] = None
+    measured_capacity_kwh: Optional[float] = None
+    cell_variance_mv: Optional[float] = None
+    diagnostic_document_id: Optional[str] = None
+    action_taken: Optional[str] = None
+    notes: Optional[str] = None
+    opened_at: datetime.datetime
+    completed_at: Optional[datetime.datetime] = None
+
+    class Config:
+        from_attributes = True
+
+class ServiceWorkOrderCreate(BaseModel):
+    technician_id: str = Field(..., example="TECH-409")
+    service_center: str = Field(..., example="Zypp Mobility Central Hub Bangalore")
+    description: str = Field(..., example="50,000 km Scheduled Service & Impedance Balance")
+
+class ServiceWorkOrderComplete(BaseModel):
+    technician_id: str = Field(..., example="TECH-409")
+    reported_soh: float = Field(..., example=82.5)
+    measured_capacity_kwh: float = Field(..., example=61.8)
+    cell_variance_mv: float = Field(..., example=12.0)
+    diagnostic_document_id: Optional[str] = Field(None, example="doc_vt1001_tuv")
+    action_taken: str = Field(..., example="Inspected contactors, balanced module #4, verified BMS calibration.")
+    notes: Optional[str] = Field(None, example="Passes routine maintenance criteria.")
+
+class LifecycleOutcomeUpdate(BaseModel):
+    outcome: str = Field(..., example="SECOND_LIFE_DEPLOYED")  # PENDING_ASSESSMENT, SECOND_LIFE_DEPLOYED, RECYCLING_PROCESSED, QUARANTINE_HOLD
+    actor: str = Field(..., example="Lead Assessor Roy")
+    notes: Optional[str] = Field(None, example="Deployed in C&I 150kWh solar storage buffer.")
 
 class BatteryDetail(BaseModel):
     id: str
@@ -130,15 +174,17 @@ class BatteryDetail(BaseModel):
     vehicle_info: Optional[str]
     current_owner: str
     status: str
+    lifecycle_outcome: Optional[str] = "PENDING_ASSESSMENT"
     created_at: datetime.datetime
     updated_at: datetime.datetime
     events: List[BatteryEventResponse]
     documents: List[DocumentResponse]
     diagnostics: List[DiagnosticResponse]
     discrepancies: List[DiscrepancyResponse]
+    service_orders: List[ServiceWorkOrderResponse] = []
     evidence_quality: Dict[str, Any]
     recall_check: Dict[str, Any]
-    triage: Dict[str, Any]
+    triage: Dict[str, Any]  # Contains record_integrity, evidence_quality, next_action, suitability, and economic_insights
     valuation: Dict[str, Any]
 
 # --- Audit Event ---
