@@ -103,6 +103,16 @@ export default function BatteryDetail({ batteryId, onBack, onOpenMobileIntake })
     loadBattery();
   }, [batteryId]);
 
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setMoreDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const handleAuditVerify = async () => {
     try {
       const res = await verifyAuditChainIntegrity();
@@ -173,6 +183,19 @@ export default function BatteryDetail({ batteryId, onBack, onOpenMobileIntake })
 
   const unresolvedDiscrepancies = battery.discrepancies?.filter((d) => d.status === 'UNRESOLVED') || [];
   const openWorkOrders = battery.service_orders?.filter((o) => o.status === 'OPEN') || [];
+  const isMoreTabActive = activeTab.startsWith('more_');
+
+  const moreSubnavOptions = [
+    { key: 'more_verification', label: 'Verification Details' },
+    { key: 'more_history', label: 'Change History' },
+    { key: 'more_recalls', label: 'Recall Checks' },
+    { key: 'more_evidence', label: 'Evidence Quality' },
+    { key: 'more_advanced_diag', label: 'Advanced Diagnostics' },
+    { key: 'more_lineage', label: 'Sub-Component Lineage' },
+    { key: 'more_buyer_conf', label: 'Buyer Risk Analysis' },
+    { key: 'more_physics', label: 'Physics Consistency' },
+    { key: 'more_valuation', label: 'Valuation Benchmark' }
+  ];
 
   return (
     <div className="battery-page-container">
@@ -242,7 +265,75 @@ export default function BatteryDetail({ batteryId, onBack, onOpenMobileIntake })
             </span>
           )}
         </button>
+
+        {/* Tab 5: More (Dropdown) */}
+        <div className="tab-more-dropdown" ref={dropdownRef}>
+          <button
+            type="button"
+            className={`tab-btn ${isMoreTabActive ? 'active' : ''}`}
+            onClick={() => setMoreDropdownOpen(!moreDropdownOpen)}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+          >
+            <span>More</span>
+            <ChevronDown size={14} style={{ transform: moreDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
+          </button>
+
+          {moreDropdownOpen && (
+            <div className="tab-dropdown-menu">
+              {moreSubnavOptions.map((opt) => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  className={`tab-dropdown-item ${activeTab === opt.key ? 'active' : ''}`}
+                  onClick={() => {
+                    setActiveTab(opt.key);
+                    setMoreDropdownOpen(false);
+                  }}
+                >
+                  <span>{opt.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Subnav pill bar when inside "More" sections */}
+      {isMoreTabActive && (
+        <div style={{
+          display: 'flex',
+          gap: '0.5rem',
+          overflowX: 'auto',
+          background: '#F8FAFC',
+          border: '1px solid #E2E8F0',
+          borderRadius: '8px',
+          padding: '0.4rem 0.6rem',
+          marginTop: '-0.75rem',
+          marginBottom: '0.5rem'
+        }}>
+          {moreSubnavOptions.map((opt) => (
+            <button
+              key={opt.key}
+              type="button"
+              onClick={() => setActiveTab(opt.key)}
+              style={{
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                borderRadius: '6px',
+                border: 'none',
+                background: activeTab === opt.key ? '#FFFFFF' : 'transparent',
+                color: activeTab === opt.key ? '#4F46E5' : '#64748B',
+                boxShadow: activeTab === opt.key ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
+                whiteSpace: 'nowrap',
+                cursor: 'pointer'
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ======================================================== */}
       {/* TAB 1: OVERVIEW (70% MAIN CONTENT + 30% SIDE PANEL)      */}
@@ -333,10 +424,7 @@ export default function BatteryDetail({ batteryId, onBack, onOpenMobileIntake })
             </div>
           </div>
 
-          {/* Section B: Sub-Component Provenance & Module Merkle Lineage */}
-          <ModuleLineageCard battery={battery} />
-
-          {/* Section C: Chronological Passport Events */}
+          {/* Chronological Passport Events */}
           <div className="card" style={{ padding: '1.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
               <div>
@@ -1000,6 +1088,333 @@ export default function BatteryDetail({ batteryId, onBack, onOpenMobileIntake })
           </div>
         </div>
       )}
+
+      {/* TAB 5: MORE (ADVANCED FEATURES & TECHNICAL TOOLS)        */}
+      {/* ======================================================== */}
+
+      {/* 5-Lineage: Sub-Component Provenance & Module Merkle Map */}
+      {activeTab === 'more_lineage' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <ModuleLineageCard battery={battery} />
+        </div>
+      )}
+
+      {/* 5-Buyer: Epistemic Buyer Confidence & History Holes */}
+      {activeTab === 'more_buyer_conf' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <BuyerConfidenceCard battery={battery} />
+        </div>
+      )}
+
+      {/* 5-Physics: Physical Consistency & Signature Paradox */}
+      {activeTab === 'more_physics' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <PhysicsConsistencyCard battery={battery} />
+        </div>
+      )}
+
+      {/* 5A. Verification Details */}
+      {activeTab === 'more_verification' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {/* Tamper Simulator Tool */}
+          <TamperSimulator
+            batteryId={battery.id}
+            documents={battery.documents || []}
+            onVerificationComplete={loadBattery}
+          />
+
+          {/* Live Ledger Verification */}
+          <div className="card" style={{ padding: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
+              <div>
+                <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                  <ShieldCheck size={18} color="#4F46E5" />
+                  <span>Audit Trail Integrity Verification</span>
+                </h2>
+                <p style={{ fontSize: '0.82rem', color: '#64748B', margin: '0.25rem 0 0' }}>
+                  Mathematically validates record sequence to verify no historical database tampering occurred.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleAuditVerify}
+                className="btn btn-secondary"
+                style={{ fontSize: '0.82rem', padding: '0.55rem 0.95rem' }}
+              >
+                <ShieldCheck size={15} color="#4F46E5" />
+                <span>Verify Live Chain</span>
+              </button>
+            </div>
+
+            {chainVerifyResult && (
+              <div
+                style={{
+                  padding: '1rem',
+                  borderRadius: '8px',
+                  background: chainVerifyResult.is_tamper_free ? '#F0FDF4' : '#FEF2F2',
+                  border: `1px solid ${chainVerifyResult.is_tamper_free ? '#BBF7D0' : '#FECACA'}`,
+                  marginBottom: '1rem'
+                }}
+              >
+                <div style={{ fontWeight: 700, color: chainVerifyResult.is_tamper_free ? '#15803D' : '#B91C1C', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                  {chainVerifyResult.is_tamper_free ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
+                  <span>{chainVerifyResult.message}</span>
+                </div>
+                <div style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', marginTop: '0.35rem', color: '#64748B' }}>
+                  Blocks Verified: {chainVerifyResult.total_blocks} • Latest Block Fingerprint: {chainVerifyResult.latest_block_hash}
+                </div>
+              </div>
+            )}
+
+            <div style={{ fontSize: '0.82rem', color: '#64748B', lineHeight: 1.5 }}>
+              VoltTrace applies an append-only audit trail where every lifecycle transaction is linked to previous event records. This guarantees that test reports, ownership transfers, and service orders cannot be altered retroactively without detection.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5B. Change History */}
+      {activeTab === 'more_history' && (
+        <div className="card" style={{ padding: '1.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+            <div>
+              <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                Complete Change History
+              </h2>
+              <p style={{ fontSize: '0.82rem', color: '#64748B', margin: '0.25rem 0 0' }}>
+                Full chronological ledger of all registration, intake, and status transitions.
+              </p>
+            </div>
+            <span className="badge badge-neutral">
+              {battery.events?.length || 0} Registered Entries
+            </span>
+          </div>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Event Title</th>
+                  <th>Submitting Body</th>
+                  <th>Actor</th>
+                  <th>Verification</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...(battery.events || [])]
+                  .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                  .map((evt, idx) => (
+                    <tr key={evt.id || idx}>
+                      <td>{new Date(evt.timestamp).toLocaleString()}</td>
+                      <td>
+                        <strong style={{ color: '#0F172A' }}>{evt.title}</strong>
+                        <div style={{ fontSize: '0.75rem', color: '#64748B' }}>{evt.description}</div>
+                      </td>
+                      <td>{evt.submitting_org}</td>
+                      <td>{evt.actor}</td>
+                      <td>
+                        <span className={`badge ${evt.verification_status === 'VERIFIED' ? 'badge-green' : 'badge-neutral'}`} style={{ fontSize: '0.72rem' }}>
+                          {evt.verification_status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* 5C. Recall Checks */}
+      {activeTab === 'more_recalls' && (
+        <div className="card" style={{ padding: '1.5rem' }}>
+          <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0F172A', marginBottom: '0.5rem' }}>
+            Safety Recall Bulletin Dataset
+          </h2>
+          <p style={{ fontSize: '0.82rem', color: '#64748B', marginBottom: '1.25rem' }}>
+            Automated technical safety bulletin matching across Ministry of Road Transport and Highways (MoRTH) & ARAI datasets.
+          </p>
+
+          <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '1rem', fontSize: '0.82rem', color: '#475569' }}>
+            <div>Dataset Reference: <strong>{battery.recall_check?.dataset_source || 'MoRTH / ARAI Technical Bulletins'}</strong></div>
+            <div style={{ marginTop: '0.25rem' }}>Last Snapshot Date: <strong>{battery.recall_check?.last_updated || '2026-10-15'}</strong></div>
+            <div style={{ marginTop: '0.25rem' }}>Status: <strong>{battery.recall_check?.status || 'Zero Recalls'}</strong></div>
+          </div>
+        </div>
+      )}
+
+      {/* 5D. Evidence Quality Dossier */}
+      {activeTab === 'more_evidence' && (
+        <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                Evidence-Quality & Verifiability Dossier
+              </h2>
+              <p style={{ fontSize: '0.82rem', color: '#64748B', margin: '0.25rem 0 0' }}>
+                Objective rating of documentation completeness, cryptographic signatures, and historical consistency.
+              </p>
+            </div>
+
+            <div style={{ textAlign: 'right' }}>
+              <div style={{
+                fontSize: '1.75rem',
+                fontWeight: 800,
+                color: (battery.evidence_quality?.score || 0) >= 80 ? '#15803D' : (battery.evidence_quality?.score || 0) >= 50 ? '#B45309' : '#B91C1C'
+              }}>
+                {battery.evidence_quality?.score || 0} / 100
+              </div>
+              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748B' }}>
+                {battery.evidence_quality?.level || 'EVIDENCE SCORE'}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '1rem', borderRadius: '8px', fontSize: '0.85rem', color: '#475569', lineHeight: 1.55 }}>
+            {battery.evidence_quality?.summary || 'Standard documentation checks completed.'}
+          </div>
+
+          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0F172A', margin: 0 }}>
+            Scoring Breakdown
+          </h3>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {(battery.evidence_quality?.breakdown || []).map((item, idx) => (
+              <div
+                key={idx}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  padding: '0.65rem 0.85rem',
+                  background: '#F8FAFC',
+                  borderRadius: '6px',
+                  border: '1px solid #E2E8F0',
+                  fontSize: '0.82rem'
+                }}
+              >
+                <span style={{ color: '#0F172A' }}>{item.item}</span>
+                <span style={{
+                  fontWeight: 700,
+                  color: item.points.startsWith('+') ? '#15803D' : item.points.startsWith('-') ? '#B91C1C' : '#64748B'
+                }}>
+                  {item.points}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '1rem', fontSize: '0.75rem', color: '#64748B', lineHeight: 1.5 }}>
+            <strong>Legal Notice:</strong> {battery.evidence_quality?.disclaimer || 'Evidence score measures document completeness only and is not a physical safety warranty.'}
+          </div>
+        </div>
+      )}
+
+      {/* 5E. Advanced Diagnostics */}
+      {activeTab === 'more_advanced_diag' && (
+        <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>
+            Advanced Engineering Diagnostics
+          </h2>
+          <p style={{ fontSize: '0.82rem', color: '#64748B', margin: '0.25rem 0 0' }}>
+            Detailed electrical and environmental parameters from registered test records.
+          </p>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Test Date</th>
+                  <th>Cell Variance</th>
+                  <th>Internal Resistance</th>
+                  <th>Ambient Temp</th>
+                  <th>Cycle Count</th>
+                  <th>Test Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(battery.diagnostics || []).map((d) => (
+                  <tr key={d.id}>
+                    <td>{new Date(d.test_date).toLocaleDateString()}</td>
+                    <td>{d.fault_codes || 'Normal (<15 mV)'}</td>
+                    <td>{d.internal_resistance_mohm ? `${d.internal_resistance_mohm} mΩ` : 'N/A'}</td>
+                    <td>{d.ambient_temp_c ? `${d.ambient_temp_c} °C` : 'N/A'}</td>
+                    <td>{d.cycle_count ? `${d.cycle_count} cycles` : 'N/A'}</td>
+                    <td>{d.notes || 'Routine intake'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* 5F. Optional Valuation Benchmark (Moved from main view per prompt Section 10) */}
+      {activeTab === 'more_valuation' && (
+        <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div>
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Optional Market Reference
+            </div>
+            <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0F172A', marginTop: '0.2rem' }}>
+              Indicative Residual Valuation Benchmark
+            </h2>
+            <p style={{ fontSize: '0.82rem', color: '#64748B', margin: '0.25rem 0 0' }}>
+              Optional, secondary market benchmark based on Indian commercial storage pricing.
+            </p>
+          </div>
+
+          <div style={{
+            background: '#F8FAFC',
+            border: '1px solid #E2E8F0',
+            borderRadius: '8px',
+            padding: '1.25rem',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '1rem'
+          }}>
+            <div>
+              <span style={{ fontSize: '0.72rem', color: '#64748B', textTransform: 'uppercase' }}>Valuation Status</span>
+              <div style={{
+                fontWeight: 800,
+                color: battery.valuation?.status === 'VALUATION_ON_HOLD' ? '#B91C1C' : '#15803D',
+                fontSize: '1rem',
+                marginTop: '0.2rem'
+              }}>
+                {battery.valuation?.status || 'Active'}
+              </div>
+            </div>
+
+            <div>
+              <span style={{ fontSize: '0.72rem', color: '#64748B', textTransform: 'uppercase' }}>Indicative Range</span>
+              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0F172A', marginTop: '0.1rem' }}>
+                {battery.valuation?.formatted_range || 'Not available'}
+              </div>
+            </div>
+
+            <div>
+              <span style={{ fontSize: '0.72rem', color: '#64748B', textTransform: 'uppercase' }}>Confidence Spread</span>
+              <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#475569', marginTop: '0.2rem' }}>
+                {battery.valuation?.confidence_label || 'Standard Reference'}
+              </div>
+            </div>
+          </div>
+
+          <div style={{
+            padding: '0.85rem',
+            background: '#FFFBEB',
+            border: '1px solid #FDE68A',
+            borderRadius: '6px',
+            fontSize: '0.78rem',
+            color: '#78350F',
+            lineHeight: 1.5
+          }}>
+            <strong>Important Epistemic Disclaimer:</strong> This valuation is an illustrative synthetic estimate for second-life commercial storage planning. It is not an appraisal, verified condition guarantee, or warranty.
+          </div>
+        </div>
+      )}
+
 
       {/* Mandatory Service Work Order Modal (Policy VT-202) */}
       <ServiceWorkOrderModal

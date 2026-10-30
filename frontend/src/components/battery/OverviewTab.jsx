@@ -216,7 +216,7 @@ export default function OverviewTab({ battery, onNavigateTab, onOpenServiceModal
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                   {isHurdleFlagship && (
                     <span style={{ fontSize: '0.68rem', fontWeight: 800, background: '#dc2626', color: '#ffffff', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>
-                      HACKATHON HURDLE AUDIT ACTIVE
+                      INTEGRITY AUDIT ACTIVE
                     </span>
                   )}
                   <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800, color: isHurdleFlagship ? '#991b1b' : '#92400e' }}>
@@ -257,7 +257,7 @@ export default function OverviewTab({ battery, onNavigateTab, onOpenServiceModal
               {hasPhysicsIssue && (
                 <button
                   type="button"
-                  onClick={() => onNavigateTab('issues')}
+                  onClick={() => onNavigateTab('more_physics')}
                   style={{
                     background: '#ffffff',
                     border: '1px solid #fca5a5',
@@ -287,7 +287,7 @@ export default function OverviewTab({ battery, onNavigateTab, onOpenServiceModal
               {hasModuleSwap && (
                 <button
                   type="button"
-                  onClick={() => onNavigateTab('history')}
+                  onClick={() => onNavigateTab('more_lineage')}
                   style={{
                     background: '#ffffff',
                     border: '1px solid #c4b5fd',
@@ -317,7 +317,7 @@ export default function OverviewTab({ battery, onNavigateTab, onOpenServiceModal
               {hasHistoryHoles && (
                 <button
                   type="button"
-                  onClick={() => onNavigateTab('issues')}
+                  onClick={() => onNavigateTab('more_buyer_conf')}
                   style={{
                     background: '#ffffff',
                     border: '1px solid #bae6fd',
@@ -453,10 +453,10 @@ export default function OverviewTab({ battery, onNavigateTab, onOpenServiceModal
         <button
           type="button"
           className="overview-action-btn overview-action-secondary"
-          onClick={() => onNavigateTab('issues')}
+          onClick={() => onNavigateTab('more_physics')}
         >
           <Shield size={16} />
-          Physics & Issues
+          Physics & Diagnostics
         </button>
       </div>
     </div>

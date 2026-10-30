@@ -64,7 +64,7 @@ export function PhysicsConsistencyCard({ battery }) {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.06em', background: '#dc2626', color: '#ffffff', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>
-                HACKATHON HURDLE AUDIT
+                PHYSICS INTEGRITY AUDIT
               </span>
               <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#991b1b' }}>
                 Valid Signature, Impossible Battery Paradox

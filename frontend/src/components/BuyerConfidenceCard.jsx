@@ -29,7 +29,7 @@ export function BuyerConfidenceCard({ battery }) {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '0.68rem', fontWeight: 800, background: '#e0f2fe', color: '#0369a1', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>
-              HACKATHON HINT 3: HISTORY HOLES & BUYER RISK
+              TELEMATICS CONTINUITY & BUYER RISK AUDIT
             </span>
             <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <HelpCircle size={20} style={{ color: '#0284c7' }} />
