@@ -78,7 +78,8 @@ def list_batteries(
             evidence_quality_label=triage["evidence_quality"]["label"],
             next_action_label=triage["next_action"]["label"],
             next_action_code=triage["next_action"]["code"],
-            suitability_label=triage["suitability"]["label"]
+            suitability_label=triage["suitability"]["label"],
+            lifecycle_outcome=b.lifecycle_outcome or "PENDING_ASSESSMENT"
         ))
 
     return results
@@ -153,17 +154,70 @@ def get_battery(battery_id: str, db: Session = Depends(get_db)):
         vehicle_info=battery.vehicle_info,
         current_owner=battery.current_owner,
         status=battery.status,
+        lifecycle_outcome=battery.lifecycle_outcome or "PENDING_ASSESSMENT",
         created_at=battery.created_at,
         updated_at=battery.updated_at,
         events=battery.events,
         documents=battery.documents,
         diagnostics=battery.diagnostics,
         discrepancies=battery.discrepancies,
+        service_orders=battery.service_orders,
         evidence_quality=evidence_quality,
         recall_check=recall_check,
         triage=triage,
         valuation=valuation
     )
+
+@router.patch("/{battery_id}/outcome", response_model=schemas.BatteryDetail)
+def update_lifecycle_outcome(
+    battery_id: str,
+    payload: schemas.LifecycleOutcomeUpdate,
+    db: Session = Depends(get_db)
+):
+    valid_outcomes = ["PENDING_ASSESSMENT", "SECOND_LIFE_DEPLOYED", "RECYCLING_PROCESSED", "QUARANTINE_HOLD"]
+    if payload.outcome not in valid_outcomes:
+        raise HTTPException(status_code=400, detail=f"Invalid outcome. Allowed: {valid_outcomes}")
+
+    battery = db.query(models.Battery).filter(models.Battery.id == battery_id).first()
+    if not battery:
+        raise HTTPException(status_code=404, detail=f"Battery {battery_id} not found.")
+
+    old_outcome = battery.lifecycle_outcome or "PENDING_ASSESSMENT"
+    battery.lifecycle_outcome = payload.outcome
+    db.commit()
+
+    # Log in Battery Event timeline
+    event_title = f"Lifecycle Disposition: {payload.outcome.replace('_', ' ').title()}"
+    event_desc = payload.notes or f"Battery reassigned from '{old_outcome}' to '{payload.outcome}'."
+    event = models.BatteryEvent(
+        battery_id=battery.id,
+        event_type="LIFECYCLE_OUTCOME_SET",
+        title=event_title,
+        description=event_desc,
+        submitting_org="VoltTrace Regional Triage Hub",
+        actor=payload.actor,
+        verification_status="VERIFIED"
+    )
+    db.add(event)
+
+    # Log in Merkle Audit Trail
+    last_audit = db.query(models.AuditEvent).order_by(models.AuditEvent.id.desc()).first()
+    prev_hash = last_audit.event_hash if last_audit else "0000000000000000000000000000000000000000000000000000000000000000"
+    ts_str = datetime.datetime.utcnow().isoformat()
+    new_audit_hash = crypto.calculate_audit_chain_hash("LIFECYCLE_OUTCOME_UPDATED", payload.actor, f"Battery {battery.id} -> {payload.outcome}", ts_str, prev_hash)
+    
+    db.add(models.AuditEvent(
+        event_type="LIFECYCLE_OUTCOME_UPDATED",
+        actor=payload.actor,
+        details=f"Updated lifecycle outcome for {battery.id} from {old_outcome} to {payload.outcome}. Notes: {payload.notes or 'None'}",
+        timestamp=datetime.datetime.utcnow(),
+        prev_hash=prev_hash,
+        event_hash=new_audit_hash
+    ))
+    db.commit()
+    db.refresh(battery)
+
+    return get_battery(battery.id, db)
 
 @router.post("", response_model=schemas.BatteryDetail)
 def register_battery(payload: schemas.BatteryCreate, db: Session = Depends(get_db)):

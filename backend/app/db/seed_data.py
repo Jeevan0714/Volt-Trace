@@ -352,6 +352,42 @@ def seed_database(db: Session):
     ])
     db.commit()
 
+    # Seed Service Work Orders (Module 2 Provenance Policy)
+    wo1 = models.ServiceWorkOrder(
+        id="WO-2024-0512",
+        battery_id="VT-1001",
+        service_center="Zypp Mobility Central Hub Bangalore",
+        technician_id="TECH-409",
+        description="Annual 40,000 km battery diagnostic inspection and BMS impedance test",
+        status="COMPLETED",
+        reported_soh=86.0,
+        measured_capacity_kwh=64.5,
+        cell_variance_mv=14.2,
+        diagnostic_document_id="doc_vt1001_tuv",
+        action_taken="Attached TÜV Rheinland ISO-17025 certified report. Cell balancing within OEM specs.",
+        notes="Service closure verified and hashed to DPP ledger.",
+        opened_at=datetime.datetime(2024, 5, 12, 10, 0),
+        completed_at=datetime.datetime(2024, 5, 12, 14, 30)
+    )
+    wo2 = models.ServiceWorkOrder(
+        id="WO-2025-0819",
+        battery_id="VT-1002",
+        service_center="Apex Regional Fleet Maintenance Depot #4",
+        technician_id="TECH-112",
+        description="Intake inspection requested prior to secondary marketplace sale",
+        status="OPEN",
+        reported_soh=None,
+        measured_capacity_kwh=None,
+        cell_variance_mv=None,
+        diagnostic_document_id=None,
+        action_taken=None,
+        notes="Pending diagnostic report submission and document verification.",
+        opened_at=datetime.datetime(2025, 8, 19, 9, 30),
+        completed_at=None
+    )
+    db.add_all([wo1, wo2])
+    db.commit()
+
     # Append Audit Events
     audit_hash_1 = crypto.calculate_audit_chain_hash("BATTERY_REGISTERED", "SYSTEM", "Registered clean battery VT-1001", "2023-04-11T10:00:00", genesis_hash)
     db.add(models.AuditEvent(

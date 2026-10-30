@@ -8,7 +8,8 @@ from app.api import (
     routes_documents,
     routes_diagnostics,
     routes_audit,
-    routes_stats
+    routes_stats,
+    routes_service
 )
 
 # Initialize database schema
@@ -46,6 +47,7 @@ app.include_router(routes_batteries.router, prefix=settings.API_V1_STR)
 app.include_router(routes_documents.router, prefix=settings.API_V1_STR)
 app.include_router(routes_diagnostics.router, prefix=settings.API_V1_STR)
 app.include_router(routes_audit.router, prefix=settings.API_V1_STR)
+app.include_router(routes_service.router, prefix=settings.API_V1_STR)
 
 @app.get(f"{settings.API_V1_STR}/health")
 def health_check():

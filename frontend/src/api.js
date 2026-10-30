@@ -84,3 +84,48 @@ export async function verifyAuditChainIntegrity() {
   if (!res.ok) throw new Error('Failed to verify audit chain integrity');
   return res.json();
 }
+
+export async function updateBatteryOutcome(batteryId, payload) {
+  const res = await fetch(`${API_BASE}/batteries/${batteryId}/outcome`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to update lifecycle outcome');
+  }
+  return res.json();
+}
+
+export async function fetchServiceOrders(batteryId) {
+  const res = await fetch(`${API_BASE}/batteries/${batteryId}/service-orders`);
+  if (!res.ok) throw new Error('Failed to fetch service orders');
+  return res.json();
+}
+
+export async function openServiceOrder(batteryId, payload) {
+  const res = await fetch(`${API_BASE}/batteries/${batteryId}/service-orders/open`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to open service order');
+  }
+  return res.json();
+}
+
+export async function completeServiceOrder(batteryId, orderId, payload) {
+  const res = await fetch(`${API_BASE}/batteries/${batteryId}/service-orders/${orderId}/complete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to complete service order');
+  }
+  return res.json();
+}

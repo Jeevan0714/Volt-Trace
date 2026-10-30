@@ -213,19 +213,20 @@ export default function Dashboard({ onSelectBattery }) {
                 <th>Pillar 2: Evidence</th>
                 <th>Pillar 3: Recommended Action</th>
                 <th>Suitability Assessment</th>
+                <th>Lifecycle Outcome</th>
                 <th style={{ textAlign: 'right' }}>Action</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={10} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                  <td colSpan={11} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
                     Loading battery passport records...
                   </td>
                 </tr>
               ) : batteries.length === 0 ? (
                 <tr>
-                  <td colSpan={10} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                  <td colSpan={11} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
                     No batteries match the selected search criteria.
                   </td>
                 </tr>
@@ -282,6 +283,25 @@ export default function Dashboard({ onSelectBattery }) {
                     <td>
                       <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
                         {b.suitability_label}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`badge ${
+                        b.lifecycle_outcome === 'SECOND_LIFE_DEPLOYED'
+                          ? 'badge-green'
+                          : b.lifecycle_outcome === 'RECYCLING_PROCESSED'
+                          ? 'badge-blue'
+                          : b.lifecycle_outcome === 'QUARANTINE_HOLD'
+                          ? 'badge-red'
+                          : 'badge-neutral'
+                      }`}>
+                        {b.lifecycle_outcome === 'SECOND_LIFE_DEPLOYED'
+                          ? 'Second Life'
+                          : b.lifecycle_outcome === 'RECYCLING_PROCESSED'
+                          ? 'Recycled'
+                          : b.lifecycle_outcome === 'QUARANTINE_HOLD'
+                          ? 'Quarantine'
+                          : 'Pending'}
                       </span>
                     </td>
                     <td style={{ textAlign: 'right' }}>

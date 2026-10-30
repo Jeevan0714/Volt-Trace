@@ -16,7 +16,9 @@ import {
   FileCheck,
   Scale,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Wrench,
+  ArrowLeft
 } from 'lucide-react';
 
 import {
@@ -30,12 +32,15 @@ import BatteryPlacard from '../components/BatteryPlacard';
 import TriageDecisionCard from '../components/TriageDecisionCard';
 import SoHTimelineChart from '../components/SoHTimelineChart';
 import TamperSimulator from '../components/TamperSimulator';
+import { EconomicInsightsCard } from '../components/EconomicInsightsCard';
+import { ServiceWorkOrderModal } from '../components/ServiceWorkOrderModal';
 
 export default function BatteryDetail({ batteryId, onBack }) {
   const [battery, setBattery] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [chainVerifyResult, setChainVerifyResult] = useState(null);
+  const [showServiceModal, setShowServiceModal] = useState(false);
 
   // New diagnostic test form state
   const [showDiagForm, setShowDiagForm] = useState(false);
@@ -144,6 +149,32 @@ export default function BatteryDetail({ batteryId, onBack }) {
 
   return (
     <div className="container" style={{ padding: '2rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+      {/* Top Action Bar */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+        <button
+          onClick={onBack}
+          className="btn btn-secondary"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', padding: '0.45rem 0.85rem' }}
+        >
+          <ArrowLeft size={15} />
+          <span>Back to Battery Registry</span>
+        </button>
+
+        <button
+          onClick={() => setShowServiceModal(true)}
+          className="btn btn-primary"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem', padding: '0.45rem 0.95rem' }}
+        >
+          <Wrench size={15} />
+          <span>Service Work Orders (Policy VT-202)</span>
+          {battery.service_orders?.filter(o => o.status === 'OPEN').length > 0 && (
+            <span style={{ background: '#f59e0b', color: '#fff', padding: '0.1rem 0.45rem', borderRadius: '10px', fontSize: '0.7rem', fontWeight: 700 }}>
+              {battery.service_orders.filter(o => o.status === 'OPEN').length} Open
+            </span>
+          )}
+        </button>
+      </div>
+
       {/* Top Header Card */}
       <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.25rem' }}>
         <div>
@@ -195,13 +226,16 @@ export default function BatteryDetail({ batteryId, onBack }) {
         </div>
       </div>
 
-      {/* 9-Section Navigation Tabs */}
+      {/* 10-Section Navigation Tabs */}
       <div className="tabs-nav">
         <button className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>
           Overview & Placard
         </button>
         <button className={`tab-btn ${activeTab === 'triage' ? 'active' : ''}`} onClick={() => setActiveTab('triage')}>
           3-Pillar Assessment & Triage
+        </button>
+        <button className={`tab-btn ${activeTab === 'workorders' ? 'active' : ''}`} onClick={() => setActiveTab('workorders')}>
+          Work Orders ({battery.service_orders?.length || 0})
         </button>
         <button className={`tab-btn ${activeTab === 'passport' ? 'active' : ''}`} onClick={() => setActiveTab('passport')}>
           Timeline Events ({battery.events?.length || 0})
@@ -271,6 +305,10 @@ export default function BatteryDetail({ batteryId, onBack }) {
             {/* Quick Triage Summary Card */}
             <TriageDecisionCard triage={battery.triage} valuation={battery.valuation} />
           </div>
+
+          <div style={{ gridColumn: '1 / -1' }}>
+            <EconomicInsightsCard battery={battery} onOutcomeUpdated={(updated) => setBattery(updated)} />
+          </div>
         </div>
       )}
 
@@ -307,6 +345,66 @@ export default function BatteryDetail({ batteryId, onBack }) {
             <div style={{ marginTop: '1rem', fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
               <strong>Notice:</strong> {battery.valuation.notes}
             </div>
+          </div>
+
+          <EconomicInsightsCard battery={battery} onOutcomeUpdated={(updated) => setBattery(updated)} />
+        </div>
+      )}
+
+      {/* TAB: SERVICE WORK ORDERS (POLICY VT-202) */}
+      {activeTab === 'workorders' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Wrench size={18} style={{ color: 'var(--primary)' }} />
+                Mandatory Service Work Orders (Module 2 Provenance Policy)
+              </h3>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                Policy VT-202: Technicians cannot close maintenance work orders in the ERP without uploading diagnostic test records and signed hashes.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowServiceModal(true)}
+              className="btn btn-primary"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              <PlusCircle size={15} />
+              <span>Open / Close Work Order</span>
+            </button>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem' }}>
+            {(battery.service_orders || []).length === 0 ? (
+              <div className="card" style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                No service work orders recorded for this pack yet. Click "Open / Close Work Order" above to initiate intake.
+              </div>
+            ) : (
+              (battery.service_orders || []).map((order) => (
+                <div key={order.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: '0.95rem' }}>{order.id}</span>
+                    <span className={`badge ${order.status === 'COMPLETED' ? 'badge-green' : 'badge-amber'}`}>
+                      {order.status}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                    {order.description}
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                    <div>Hub: <strong>{order.service_center}</strong></div>
+                    <div>Tech: <strong>{order.technician_id}</strong></div>
+                    <div>SoH: <strong style={{ color: order.reported_soh ? 'var(--verified-green)' : 'var(--warning-amber)' }}>{order.reported_soh ? `${order.reported_soh}%` : 'Pending'}</strong></div>
+                    <div>Variance: <strong>{order.cell_variance_mv ? `${order.cell_variance_mv} mV` : 'N/A'}</strong></div>
+                  </div>
+                  {order.action_taken && (
+                    <div style={{ fontSize: '0.78rem', padding: '0.5rem 0.75rem', background: 'var(--bg-app)', borderRadius: '6px', color: 'var(--text-secondary)' }}>
+                      <strong>Action:</strong> {order.action_taken}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}
@@ -825,6 +923,14 @@ export default function BatteryDetail({ batteryId, onBack }) {
           </div>
         </div>
       )}
+
+      {/* Mandatory Service Work Order Modal (Policy VT-202) */}
+      <ServiceWorkOrderModal
+        battery={battery}
+        isOpen={showServiceModal}
+        onClose={() => setShowServiceModal(false)}
+        onOrderUpdated={() => loadBattery()}
+      />
     </div>
   );
 }
