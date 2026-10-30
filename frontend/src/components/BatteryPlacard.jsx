@@ -1,17 +1,45 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Printer, BatteryCharging, QrCode } from 'lucide-react';
+import { Printer, BatteryCharging, QrCode, Smartphone, Wifi, Copy, Check } from 'lucide-react';
+import { fetchNetworkInfo } from '../api';
 
 export default function BatteryPlacard({ battery }) {
+  const [networkInfo, setNetworkInfo] = useState(null);
+  const [useNetworkIp, setUseNetworkIp] = useState(true);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    fetchNetworkInfo().then((info) => {
+      if (info && info.lan_ip) {
+        setNetworkInfo(info);
+      }
+    });
+  }, []);
+
   if (!battery) return null;
 
-  // The QR link points to the digital passport URI
-  const passportUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/?id=${battery.id}`
-    : `https://volttrace.io/passport/${battery.id}`;
+  const isLocalhost =
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+  // When on localhost, default to using the PC's Wi-Fi / LAN IP so phones scanning from the monitor can reach the PC!
+  const resolvedOrigin =
+    isLocalhost && networkInfo?.lan_ip && useNetworkIp
+      ? `http://${networkInfo.lan_ip}:${window.location.port || '5173'}`
+      : typeof window !== 'undefined'
+      ? window.location.origin
+      : 'https://volttrace.io';
+
+  const passportUrl = `${resolvedOrigin}/?id=${battery.id}`;
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(passportUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -80,16 +108,31 @@ export default function BatteryPlacard({ battery }) {
             </div>
           </div>
 
-          <div style={{ background: '#ffffff', padding: '0.75rem', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
+          {/* QR Code Container */}
+          <div style={{ background: '#ffffff', padding: '0.75rem', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.5)', minWidth: '150px' }}>
             <QRCodeSVG
               value={passportUrl}
               size={130}
               level="H"
               includeMargin={false}
             />
-            <span style={{ fontSize: '0.65rem', color: '#0f172a', fontWeight: 700, marginTop: '0.4rem', letterSpacing: '0.05em' }}>
+            <span style={{ fontSize: '0.65rem', color: '#0f172a', fontWeight: 800, marginTop: '0.45rem', letterSpacing: '0.05em' }}>
               SCAN PASSPORT
             </span>
+            {isLocalhost && networkInfo?.lan_ip && (
+              <div style={{ marginTop: '0.35rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.58rem', color: '#64748b', fontWeight: 600 }}>
+                  Target: {useNetworkIp ? 'Wi-Fi IP (Phone Ready)' : 'localhost'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setUseNetworkIp(!useNetworkIp)}
+                  style={{ fontSize: '0.58rem', color: '#0284c7', background: 'none', border: 'none', cursor: 'pointer', padding: '0.1rem', textDecoration: 'underline' }}
+                >
+                  Toggle to {useNetworkIp ? 'localhost' : 'Wi-Fi IP'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -105,10 +148,26 @@ export default function BatteryPlacard({ battery }) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-        <button onClick={handlePrint} className="btn btn-secondary">
-          <Printer size={15} /> Print Physical Label Placard
-        </button>
+      {/* Helpful Mobile Link Bar */}
+      <div style={{ background: '#f8fafc', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.65rem 0.95rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.78rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}>
+          <Smartphone size={15} color="var(--primary)" />
+          <span><strong>QR Target URL:</strong> <code style={{ color: 'var(--primary)', fontFamily: 'var(--font-mono)' }}>{passportUrl}</code></span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="btn btn-secondary"
+            style={{ fontSize: '0.72rem', padding: '0.3rem 0.6rem' }}
+          >
+            {copied ? <Check size={12} color="var(--verified-green)" /> : <Copy size={12} />}
+            <span>{copied ? 'Copied' : 'Copy URL'}</span>
+          </button>
+          <button onClick={handlePrint} className="btn btn-secondary" style={{ fontSize: '0.72rem', padding: '0.3rem 0.6rem' }}>
+            <Printer size={12} /> Print Placard
+          </button>
+        </div>
       </div>
     </div>
   );

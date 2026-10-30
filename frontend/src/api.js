@@ -1,5 +1,15 @@
 const API_BASE = '/api/v1';
 
+export async function fetchNetworkInfo() {
+  try {
+    const res = await fetch(`${API_BASE}/stats/network-info`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchStatsSummary() {
   const res = await fetch(`${API_BASE}/stats/summary`);
   if (!res.ok) throw new Error('Failed to fetch dashboard stats');
@@ -35,6 +45,19 @@ export async function registerBattery(payload) {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || 'Failed to register battery');
+  }
+  return res.json();
+}
+
+export async function submitRoleIntake(batteryId, payload) {
+  const res = await fetch(`${API_BASE}/batteries/${batteryId}/role-intake`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to submit role intake record');
   }
   return res.json();
 }

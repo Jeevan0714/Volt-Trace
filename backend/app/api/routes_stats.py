@@ -1,3 +1,4 @@
+import socket
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.db.database import get_db
@@ -6,6 +7,26 @@ from app.schemas import schemas
 from app.core import rules_engine
 
 router = APIRouter(prefix="/stats", tags=["Statistics"])
+
+def get_lan_ip() -> str:
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
+
+@router.get("/network-info")
+def get_network_info():
+    ip = get_lan_ip()
+    return {
+        "lan_ip": ip,
+        "frontend_port": 5173,
+        "network_url": f"http://{ip}:5173",
+        "qr_base_url": f"http://{ip}:5173/?id="
+    }
 
 @router.get("/summary", response_model=schemas.DashboardStats)
 def get_dashboard_summary(db: Session = Depends(get_db)):

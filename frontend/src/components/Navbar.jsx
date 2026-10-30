@@ -1,7 +1,16 @@
-import React from 'react';
-import { Zap, QrCode, PlusCircle, ShieldCheck, ArrowLeft, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Zap, QrCode, PlusCircle, ShieldCheck, ArrowLeft, RefreshCw, Wifi, Smartphone } from 'lucide-react';
+import { fetchNetworkInfo } from '../api';
 
 export default function Navbar({ onOpenScanner, onOpenRegister, activeBatteryId, onBackToDashboard, onRefresh }) {
+  const [networkInfo, setNetworkInfo] = useState(null);
+
+  useEffect(() => {
+    fetchNetworkInfo().then((info) => {
+      if (info?.lan_ip) setNetworkInfo(info);
+    });
+  }, []);
+
   return (
     <header className="navbar">
       <div className="container navbar-inner">
@@ -35,6 +44,26 @@ export default function Navbar({ onOpenScanner, onOpenRegister, activeBatteryId,
         </div>
 
         <div className="nav-actions">
+          {networkInfo?.lan_ip && (
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                fontSize: '0.72rem',
+                color: 'var(--text-secondary)',
+                background: 'var(--bg-app)',
+                border: '1px solid var(--border-color)',
+                padding: '0.35rem 0.65rem',
+                borderRadius: '20px'
+              }}
+              title={`Mobile URL: http://${networkInfo.lan_ip}:5173`}
+            >
+              <Wifi size={13} color="var(--primary)" />
+              <span className="hide-mobile">Phone: <strong>{networkInfo.lan_ip}:5173</strong></span>
+            </div>
+          )}
+
           {onRefresh && (
             <button
               onClick={onRefresh}

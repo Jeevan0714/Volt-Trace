@@ -162,6 +162,73 @@ class LifecycleOutcomeUpdate(BaseModel):
     actor: str = Field(..., example="Lead Assessor Roy")
     notes: Optional[str] = Field(None, example="Deployed in C&I 150kWh solar storage buffer.")
 
+# --- Role-Based Mobile Intake Schema ---
+class RoleIntakeSubmission(BaseModel):
+    role: str = Field(..., example="SELLER")  # MANUFACTURER, ASSEMBLER, SELLER, RECYCLER
+    actor_name: str = Field(..., example="Technician Sharma")
+    organization: str = Field(..., example="Apex EV Services Hub #3")
+    
+    # Operational & diagnostic metrics
+    reported_soh: Optional[float] = None
+    measured_capacity_kwh: Optional[float] = None
+    internal_resistance_mohm: Optional[float] = None
+    cell_variance_mv: Optional[float] = None
+    action_type: Optional[str] = None
+    odometer_km: Optional[int] = None
+    vehicle_info: Optional[str] = None
+    ambient_temp_c: Optional[float] = 25.0
+    
+    # Manufacturer-specific inputs
+    factory_serial_number: Optional[str] = None
+    cell_lot_id: Optional[str] = None
+    chemistry: Optional[str] = None
+    rated_capacity_kwh: Optional[float] = None
+    nominal_voltage: Optional[float] = None
+    cell_manufacturer: Optional[str] = None
+    plant_location: Optional[str] = None
+
+    # Assembler / Module replacement inputs
+    module_replaced: Optional[bool] = False
+    new_module_serial: Optional[str] = None
+    cells_replaced_count: Optional[int] = None
+    oem_compatibility_cert: Optional[str] = None
+
+    # Seller & Transfer inputs
+    decommission_reason: Optional[str] = None
+    accident_or_thermal_history: Optional[bool] = False
+    submersion_history: Optional[bool] = False
+    physical_damage_detected: Optional[bool] = False
+
+    # Recycler triage & visual check
+    swelling_detected: Optional[bool] = False
+    corrosion_detected: Optional[bool] = False
+    leak_detected: Optional[bool] = False
+    disposition: Optional[str] = None  # SECOND_LIFE_BESS, REPAIR_REQUIRED, RECYCLING_PROCESSED
+
+    # Document attachment (base64 or precomputed hash)
+    file_name: Optional[str] = None
+    file_base64: Optional[str] = None
+    file_hash_sha256: Optional[str] = None
+
+    notes: Optional[str] = None
+
+class RoleIntakeResponse(BaseModel):
+    status: str
+    battery_id: str
+    role: str
+    event_title: str
+    actor_name: str
+    organization: str
+    audit_hash: str
+    prev_audit_hash: Optional[str] = None
+    discrepancy_flagged: bool
+    anti_fraud_alert: Optional[str] = None
+    file_hash_sha256: Optional[str] = None
+    file_name: Optional[str] = None
+    passport_status: str  # "UP_TO_DATE", "FLAGGED_INSPECTION_REQUIRED", "QUARANTINED"
+    summary: str
+    timestamp: datetime.datetime
+
 class BatteryDetail(BaseModel):
     id: str
     uuid: str
