@@ -480,47 +480,95 @@ export default function MobileIntake({
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.85rem' }}>
-              {/* Role 1: Manufacturer */}
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedRole('MANUFACTURER');
-                  setStep('FORM');
-                }}
-                style={{
-                  background: 'linear-gradient(135deg, #1e293b, #0f172a)',
-                  border: '1.5px solid #334155',
-                  borderRadius: '12px',
-                  padding: '1.1rem 1.25rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '1rem',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
-                }}
-                onMouseEnter={e => e.currentTarget.style.borderColor = '#38bdf8'}
-                onMouseLeave={e => e.currentTarget.style.borderColor = '#334155'}
-              >
-                <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: 'rgba(56, 189, 248, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Factory size={26} color="#38bdf8" />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '1rem', fontWeight: 700, color: '#f8fafc' }}>
-                      🏭 Manufacturer (OEM / Cell Producer)
-                    </span>
-                    <span style={{ fontSize: '0.65rem', background: '#0369a1', color: '#e0f2fe', padding: '0.15rem 0.45rem', borderRadius: '4px', fontWeight: 700 }}>
-                      MINT SPECS
-                    </span>
+              {/* Role 1: Manufacturer (Frozen for already registered battery) */}
+              {battery ? (
+                <div
+                  style={{
+                    background: 'rgba(15, 23, 42, 0.7)',
+                    border: '1px solid #334155',
+                    borderRadius: '12px',
+                    padding: '0.75rem 1rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '0.5rem'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'rgba(56, 189, 248, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Lock size={14} color="#38bdf8" />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#f8fafc' }}>
+                        🏭 Factory Birth Certificate Locked & Certified
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>
+                        Original baseline minted by {battery.manufacturer || 'OEM'} ({battery.mfg_date})
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '0.25rem' }}>
-                    Mint factory birth certificate, lot reference & freeze original baseline hash.
-                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedRole('MANUFACTURER');
+                      setStep('FORM');
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#38bdf8',
+                      fontSize: '0.68rem',
+                      cursor: 'pointer',
+                      textDecoration: 'underline'
+                    }}
+                  >
+                    OEM Revision
+                  </button>
                 </div>
-                <ArrowRight size={18} color="#64748b" />
-              </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedRole('MANUFACTURER');
+                    setStep('FORM');
+                  }}
+                  style={{
+                    background: 'linear-gradient(135deg, #1e293b, #0f172a)',
+                    border: '1.5px solid #334155',
+                    borderRadius: '12px',
+                    padding: '1.1rem 1.25rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1rem',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = '#38bdf8'}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = '#334155'}
+                >
+                  <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: 'rgba(56, 189, 248, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Factory size={26} color="#38bdf8" />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '1rem', fontWeight: 700, color: '#f8fafc' }}>
+                        🏭 Manufacturer (OEM / Cell Producer)
+                      </span>
+                      <span style={{ fontSize: '0.65rem', background: '#0369a1', color: '#e0f2fe', padding: '0.15rem 0.45rem', borderRadius: '4px', fontWeight: 700 }}>
+                        MINT SPECS
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '0.25rem' }}>
+                      Mint factory birth certificate, lot reference & freeze original baseline hash.
+                    </div>
+                  </div>
+                  <ArrowRight size={18} color="#64748b" />
+                </button>
+              )}
 
               {/* Role 2: Assembler / Technician */}
               <button

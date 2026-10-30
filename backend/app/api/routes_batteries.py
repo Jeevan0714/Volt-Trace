@@ -58,6 +58,11 @@ def list_batteries(
         
         # 3-Pillar Triage Output
         triage = triage_engine.evaluate_second_life_triage(b)
+        has_physics = any(
+            d.code in ["DISC_VALID_SIG_IMPOSSIBLE_SOH", "DISC_CYCLE_ROLLBACK", "DISC_UNREALISTIC_FADE"]
+            for d in b.discrepancies if d.status == "UNRESOLVED"
+        )
+        has_mod_swap = any(getattr(m, "is_replaced", False) for m in (b.modules or []))
 
         results.append(schemas.BatteryListItem(
             id=b.id,
@@ -81,7 +86,10 @@ def list_batteries(
             next_action_label=triage["next_action"]["label"],
             next_action_code=triage["next_action"]["code"],
             suitability_label=triage["suitability"]["label"],
-            lifecycle_outcome=b.lifecycle_outcome or "PENDING_ASSESSMENT"
+            lifecycle_outcome=b.lifecycle_outcome or "PENDING_ASSESSMENT",
+            has_physics_violation=has_physics,
+            has_module_replacement=has_mod_swap,
+            buyer_confidence_score=triage.get("buyer_confidence", {}).get("buyer_confidence_score", 90)
         ))
 
     return results
@@ -157,6 +165,7 @@ def get_battery(battery_id: str, db: Session = Depends(get_db)):
         current_owner=battery.current_owner,
         status=battery.status,
         lifecycle_outcome=battery.lifecycle_outcome or "PENDING_ASSESSMENT",
+        pack_composite_merkle_root=battery.pack_composite_merkle_root,
         created_at=battery.created_at,
         updated_at=battery.updated_at,
         events=battery.events,
@@ -164,6 +173,7 @@ def get_battery(battery_id: str, db: Session = Depends(get_db)):
         diagnostics=battery.diagnostics,
         discrepancies=battery.discrepancies,
         service_orders=battery.service_orders,
+        modules=battery.modules,
         evidence_quality=evidence_quality,
         recall_check=recall_check,
         triage=triage,

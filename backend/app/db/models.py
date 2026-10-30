@@ -20,15 +20,17 @@ class Battery(Base):
     current_owner = Column(String(128), nullable=False)
     status = Column(String(64), default="active")  # active, quarantined, recycled
     lifecycle_outcome = Column(String(64), default="PENDING_ASSESSMENT")  # PENDING_ASSESSMENT, SECOND_LIFE_DEPLOYED, RECYCLING_PROCESSED
+    pack_composite_merkle_root = Column(String(64), nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
     # Relationships
-    events = relationship("BatteryEvent", back_populates="battery", cascade="all, delete-orphan", order_by="BatteryEvent.timestamp")
+    events = relationship("BatteryEvent", back_populates="battery", cascade="all, delete-orphan", order_by="BatteryEvent.timestamp.desc()")
     documents = relationship("Document", back_populates="battery", cascade="all, delete-orphan", order_by="Document.uploaded_at.desc()")
     diagnostics = relationship("DiagnosticReport", back_populates="battery", cascade="all, delete-orphan", order_by="DiagnosticReport.test_date.desc()")
     discrepancies = relationship("Discrepancy", back_populates="battery", cascade="all, delete-orphan")
     service_orders = relationship("ServiceWorkOrder", back_populates="battery", cascade="all, delete-orphan", order_by="ServiceWorkOrder.opened_at.desc()")
+    modules = relationship("BatteryModule", back_populates="battery", cascade="all, delete-orphan", order_by="BatteryModule.module_index.asc()")
 
 class BatteryEvent(Base):
     __tablename__ = "battery_events"
@@ -154,3 +156,25 @@ class ServiceWorkOrder(Base):
     completed_at = Column(DateTime, nullable=True)
 
     battery = relationship("Battery", back_populates="service_orders")
+ 
+class BatteryModule(Base):
+    __tablename__ = "battery_modules"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    battery_id = Column(String(64), ForeignKey("batteries.id", ondelete="CASCADE"), nullable=False, index=True)
+    module_index = Column(Integer, nullable=False)  # e.g. 1 through 8 or 16
+    serial_number = Column(String(128), nullable=False)
+    cell_chemistry = Column(String(64), default="LFP")
+    nominal_voltage = Column(Float, default=40.0)
+    soh_percent = Column(Float, nullable=False)
+    internal_resistance_mohm = Column(Float, nullable=False)
+    cycle_count = Column(Integer, default=0)
+    is_replaced = Column(Boolean, default=False)
+    replacement_origin = Column(String(64), default="ORIGINAL_OEM")  # ORIGINAL_OEM, NEW_OEM_PART, SALVAGE_DONOR_PACK
+    donor_battery_id = Column(String(64), nullable=True)  # e.g. "VT-0941"
+    donor_notes = Column(Text, nullable=True)
+    status = Column(String(64), default="NOMINAL")  # NOMINAL, IMPEDANCE_MISMATCH_HAZARD, UNVERIFIED_SWAP
+    module_hash = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    battery = relationship("Battery", back_populates="modules")

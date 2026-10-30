@@ -3,6 +3,7 @@ import requests
 from typing import Dict, Any, Optional, List
 from app.db import models
 from app.core.config import settings
+from app.core.rules_engine import calculate_buyer_confidence_index
 
 def evaluate_second_life_triage(battery: models.Battery) -> Dict[str, Any]:
     """
@@ -17,17 +18,35 @@ def evaluate_second_life_triage(battery: models.Battery) -> Dict[str, Any]:
     latest_soh = latest_diag.reported_soh if latest_diag else None
     
     # -------------------------------------------------------------
-    # PILLAR 1: RECORD INTEGRITY
+    # PILLAR 1: RECORD INTEGRITY & PHYSICAL AUTHENTICITY
     # -------------------------------------------------------------
     has_mismatch = any(doc.integrity_status == "MISMATCH_DETECTED" for doc in battery.documents)
     has_signature_invalid = any(doc.signature_status == "INVALID_SIGNATURE" for doc in battery.documents)
+    has_trusted_sig = any(doc.signature_status in ["VALID_TRUSTED_ISSUER", "VALID_UNACCREDITED"] or doc.trust_tier == "TIER_2_ISSUER_SIGNED" for doc in battery.documents)
     
+    # Hackathon Hurdle: "Valid Signature, Impossible Battery"
+    has_physics_violation = any(
+        d.code in ["DISC_VALID_SIG_IMPOSSIBLE_SOH", "DISC_CYCLE_ROLLBACK", "DISC_UNREALISTIC_FADE"]
+        for d in (battery.discrepancies or []) if d.status == "UNRESOLVED"
+    )
+    has_module_hazard = any(
+        d.code in ["DISC_MODULE_IMPEDANCE_MISMATCH", "DISC_DONOR_MODULE_DETECTED"]
+        for d in (battery.discrepancies or []) if d.status == "UNRESOLVED"
+    )
+
     if not battery.documents:
         record_integrity = {
             "status": "NOT_REGISTERED",
             "label": "No Registered Documents",
             "badge_class": "badge-neutral",
             "details": "No supporting reports or invoices have been uploaded to establish cryptographic reference."
+        }
+    elif has_physics_violation:
+        record_integrity = {
+            "status": "PHYSICALLY_IMPOSSIBLE_DATA",
+            "label": "Valid Signature, Impossible Battery (Physics Contradiction)",
+            "badge_class": "badge-red",
+            "details": "Document origin signature is cryptographically valid, but reported telemetry violates fundamental laws of battery physics or cycle monotonicity."
         }
     elif has_mismatch or has_signature_invalid:
         record_integrity = {
@@ -37,8 +56,6 @@ def evaluate_second_life_triage(battery: models.Battery) -> Dict[str, Any]:
             "details": "One or more uploaded files differ from their registered SHA-256 fingerprint. Evidence tampering or file alteration detected."
         }
     else:
-        # Check if trusted digital signature is present
-        has_trusted_sig = any(doc.signature_status == "VALID_TRUSTED_ISSUER" for doc in battery.documents)
         record_integrity = {
             "status": "VERIFIED_MATCH",
             "label": "Verified Authentic (SHA-256)" + (" & Signed" if has_trusted_sig else ""),
@@ -47,21 +64,25 @@ def evaluate_second_life_triage(battery: models.Battery) -> Dict[str, Any]:
         }
 
     # -------------------------------------------------------------
-    # PILLAR 2: EVIDENCE QUALITY
+    # PILLAR 2: EVIDENCE QUALITY & EPITEMIC CERTAINTY
     # -------------------------------------------------------------
     unresolved_anomalies = [
         d for d in battery.discrepancies if d.status == "UNRESOLVED" and d.severity in ["HIGH", "CRITICAL"]
     ]
-    unresolved_medium = [
-        d for d in battery.discrepancies if d.status == "UNRESOLVED" and d.severity == "MEDIUM"
-    ]
 
-    if unresolved_anomalies or has_mismatch:
+    if has_physics_violation or has_module_hazard or unresolved_anomalies or has_mismatch:
+        summary_text = (
+            "Cryptographically signed record describes physically impossible behavior (odometer rollback or unassisted SoH inversion)."
+            if has_physics_violation else
+            "Sub-component module replacement has fractured pack identity with high internal resistance mismatch."
+            if has_module_hazard else
+            "Historical records contain serious contradictions, unexplained SoH inversions, or file integrity failures."
+        )
         evidence_quality = {
             "status": "CONFLICTING_EVIDENCE",
-            "label": "Conflicting Evidence",
+            "label": "Physics / Evidence Conflict",
             "badge_class": "badge-red",
-            "summary": "Historical records contain serious contradictions, unexplained SoH inversions, or file integrity failures."
+            "summary": summary_text
         }
     elif not battery.documents or not battery.diagnostics:
         evidence_quality = {
@@ -238,7 +259,8 @@ def evaluate_second_life_triage(battery: models.Battery) -> Dict[str, Any]:
             "water_avoided_liters": int(battery.rated_capacity_kwh * 1120),
             "second_life_extension_years": 7.5 if suitability_status == "CANDIDATE_FOR_FURTHER_ASSESSMENT" else 0.0,
             "current_outcome": getattr(battery, "lifecycle_outcome", "PENDING_ASSESSMENT") or "PENDING_ASSESSMENT"
-        }
+        },
+        "buyer_confidence": calculate_buyer_confidence_index(battery)
     }
 
 def calculate_indicative_valuation(battery: models.Battery) -> Dict[str, Any]:

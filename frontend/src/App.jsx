@@ -21,13 +21,26 @@ export default function App() {
       const isMobilePath =
         window.location.pathname.startsWith('/mobile-intake') ||
         params.get('mode') === 'mobile-intake' ||
-        params.get('view') === 'mobile-intake';
+        params.get('mode') === 'mobile' ||
+        params.get('view') === 'mobile-intake' ||
+        params.get('view') === 'mobile';
+
+      // Detect if user is scanning from a physical mobile phone
+      const isMobileDevice =
+        typeof window !== 'undefined' &&
+        (window.innerWidth <= 768 ||
+          /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+
+      const forceDesktop = params.get('view') === 'desktop';
 
       if (idParam) {
         setActiveBatteryId(idParam);
       }
 
-      if (isMobilePath) {
+      // Automatically open Mobile Intake if:
+      // 1. Explicit mobile URL/param
+      // 2. OR user is on a smartphone and scanned a battery QR code (without ?view=desktop)
+      if (isMobilePath || (idParam && isMobileDevice && !forceDesktop)) {
         setViewMode('mobile-intake');
       } else {
         setViewMode('desktop');
@@ -39,12 +52,14 @@ export default function App() {
     return () => window.removeEventListener('popstate', syncRouteFromUrl);
   }, []);
 
+
   const handleSelectBattery = (id) => {
     setActiveBatteryId(id);
     setViewMode('desktop');
     const url = new URL(window.location);
     url.pathname = '/';
     url.searchParams.set('id', id);
+    url.searchParams.set('view', 'desktop');
     url.searchParams.delete('mode');
     window.history.pushState({}, '', url);
   };

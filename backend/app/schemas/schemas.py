@@ -99,6 +99,27 @@ class BatteryCreate(BaseModel):
     vehicle_info: Optional[str] = Field(None, example="BluSmart Fleet #89")
     current_owner: str = Field(..., example="BluSmart Mobility Ltd")
 
+# --- Battery Module Lineage Schemas ---
+class BatteryModuleResponse(BaseModel):
+    id: int
+    battery_id: str
+    module_index: int
+    serial_number: str
+    cell_chemistry: str
+    nominal_voltage: float
+    soh_percent: float
+    internal_resistance_mohm: float
+    cycle_count: int
+    is_replaced: bool
+    replacement_origin: str
+    donor_battery_id: Optional[str] = None
+    donor_notes: Optional[str] = None
+    status: str
+    module_hash: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
 class BatteryListItem(BaseModel):
     id: str
     manufacturer: str
@@ -122,6 +143,9 @@ class BatteryListItem(BaseModel):
     next_action_code: str
     suitability_label: str
     lifecycle_outcome: Optional[str] = "PENDING_ASSESSMENT"
+    has_physics_violation: Optional[bool] = False
+    has_module_replacement: Optional[bool] = False
+    buyer_confidence_score: Optional[int] = None
 
 # --- Service Work Order Schemas ---
 class ServiceWorkOrderResponse(BaseModel):
@@ -242,6 +266,7 @@ class BatteryDetail(BaseModel):
     current_owner: str
     status: str
     lifecycle_outcome: Optional[str] = "PENDING_ASSESSMENT"
+    pack_composite_merkle_root: Optional[str] = None
     created_at: datetime.datetime
     updated_at: datetime.datetime
     events: List[BatteryEventResponse]
@@ -249,9 +274,10 @@ class BatteryDetail(BaseModel):
     diagnostics: List[DiagnosticResponse]
     discrepancies: List[DiscrepancyResponse]
     service_orders: List[ServiceWorkOrderResponse] = []
+    modules: List[BatteryModuleResponse] = []
     evidence_quality: Dict[str, Any]
     recall_check: Dict[str, Any]
-    triage: Dict[str, Any]  # Contains record_integrity, evidence_quality, next_action, suitability, and economic_insights
+    triage: Dict[str, Any]  # Contains record_integrity, evidence_quality, next_action, suitability, economic_insights, and buyer_confidence
     valuation: Dict[str, Any]
 
 # --- Audit Event ---

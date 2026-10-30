@@ -86,7 +86,15 @@ export default function Dashboard({ onSelectBattery }) {
               className="btn btn-secondary"
               style={{ background: '#1e293b', color: '#f87171', borderColor: '#dc2626', fontSize: '0.8rem', justifyContent: 'space-between' }}
             >
-              <span>🚨 VT-1002 (Tamper / Contradiction)</span>
+              <span>🚨 VT-1002 (Tamper / Hash Contradiction)</span>
+              <ArrowRight size={14} />
+            </button>
+            <button
+              onClick={() => onSelectBattery('VT-1003')}
+              className="btn btn-secondary"
+              style={{ background: '#1e293b', color: '#fbbf24', borderColor: '#d97706', fontSize: '0.8rem', justifyContent: 'space-between' }}
+            >
+              <span>⚡ VT-1003 (Valid Sig, Impossible Battery)</span>
               <ArrowRight size={14} />
             </button>
           </div>
@@ -234,9 +242,21 @@ export default function Dashboard({ onSelectBattery }) {
                 batteries.map((b) => (
                   <tr key={b.id} style={{ cursor: 'pointer' }} onClick={() => onSelectBattery(b.id)}>
                     <td>
-                      <span style={{ fontWeight: 800, color: 'var(--primary)', fontFamily: 'var(--font-mono)' }}>
-                        {b.id}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.3rem' }}>
+                        <span style={{ fontWeight: 800, color: 'var(--primary)', fontFamily: 'var(--font-mono)' }}>
+                          {b.id}
+                        </span>
+                        {b.has_physics_violation && (
+                          <span className="badge badge-red" style={{ fontSize: '0.62rem', padding: '0.1rem 0.35rem' }}>
+                            ⚡ Physics Violation
+                          </span>
+                        )}
+                        {b.has_module_replacement && (
+                          <span className="badge badge-amber" style={{ fontSize: '0.62rem', padding: '0.1rem 0.35rem' }}>
+                            🧩 Module Swapped
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td>
                       <div style={{ fontWeight: 600 }}>{b.model}</div>
@@ -262,7 +282,11 @@ export default function Dashboard({ onSelectBattery }) {
                       )}
                     </td>
                     <td>
-                      {b.integrity_status === 'MATCHED' ? (
+                      {b.has_physics_violation ? (
+                        <span className="badge badge-red" title="Valid Signature on Physically Impossible Data">
+                          <Zap size={12} /> Impossible
+                        </span>
+                      ) : b.integrity_status === 'MATCHED' ? (
                         <span className="badge badge-green"><CheckCircle2 size={12} /> Verified</span>
                       ) : b.integrity_status === 'MISMATCH_DETECTED' ? (
                         <span className="badge badge-red"><XCircle size={12} /> Mismatch</span>
@@ -274,6 +298,11 @@ export default function Dashboard({ onSelectBattery }) {
                       <span className={`badge ${b.evidence_score >= 80 ? 'badge-green' : b.evidence_score >= 50 ? 'badge-amber' : 'badge-red'}`}>
                         {b.evidence_quality_label}
                       </span>
+                      {b.buyer_confidence_score !== undefined && b.buyer_confidence_score !== null && (
+                        <div style={{ fontSize: '0.68rem', color: b.buyer_confidence_score < 50 ? '#dc2626' : 'var(--text-muted)', marginTop: '0.2rem', fontWeight: 700 }}>
+                          {b.buyer_confidence_score}% Buyer Conf.
+                        </div>
+                      )}
                     </td>
                     <td>
                       <span className={`badge ${b.next_action_code === 'HOLD_FOR_INVESTIGATION' ? 'badge-red' : b.next_action_code === 'FURTHER_INSPECTION' ? 'badge-amber' : 'badge-green'}`}>

@@ -26,8 +26,8 @@ export function EconomicInsightsCard({ battery, onOutcomeUpdated }) {
 
   const econ = battery.triage?.economic_insights || {
     testing_time_saved_hours: 0,
-    testing_savings_label: 'Testing Assessment Pending',
-    testing_savings_rationale: 'Reviewing diagnostic baseline.',
+    testing_savings_label: 'Standard Laboratory Qualification Required',
+    testing_savings_rationale: 'Reviewing diagnostic baseline and historical log consistency.',
     cycler_cost_saved_estimate: '₹0',
     critical_metals_kg: (battery.rated_capacity_kwh * 0.56).toFixed(1),
     water_avoided_liters: Math.round(battery.rated_capacity_kwh * 1120),
@@ -56,7 +56,7 @@ export function EconomicInsightsCard({ battery, onOutcomeUpdated }) {
       });
 
       setSelectedOutcome(newOutcome);
-      setSuccessMsg(`Lifecycle outcome successfully recorded as: ${newOutcome.replace(/_/g, ' ')}`);
+      setSuccessMsg(`Lifecycle outcome successfully updated: ${String(newOutcome || '').replace(/_/g, ' ')}`);
       if (onOutcomeUpdated) {
         onOutcomeUpdated(updated);
       }
@@ -72,26 +72,30 @@ export function EconomicInsightsCard({ battery, onOutcomeUpdated }) {
       case 'SECOND_LIFE_DEPLOYED':
         return {
           label: 'Deployed in Second Life (Active)',
-          bg: 'bg-emerald-50 text-emerald-800 border-emerald-300',
-          dot: 'bg-emerald-500',
+          color: '#059669',
+          bg: '#ecfdf5',
+          border: '#a7f3d0'
         };
       case 'RECYCLING_PROCESSED':
         return {
           label: 'Dispatched to Closed-Loop Recycling',
-          bg: 'bg-blue-50 text-blue-800 border-blue-300',
-          dot: 'bg-blue-500',
+          color: '#0284c7',
+          bg: '#f0f9ff',
+          border: '#bae6fd'
         };
       case 'QUARANTINE_HOLD':
         return {
           label: 'Quarantine / Technical Hold',
-          bg: 'bg-rose-50 text-rose-800 border-rose-300',
-          dot: 'bg-rose-500',
+          color: '#dc2626',
+          bg: '#fef2f2',
+          border: '#fecaca'
         };
       default:
         return {
           label: 'Pending Second-Life Triage Assessment',
-          bg: 'bg-amber-50 text-amber-800 border-amber-300',
-          dot: 'bg-amber-500',
+          color: '#d97706',
+          bg: '#fffbeb',
+          border: '#fde68a'
         };
     }
   };
@@ -99,243 +103,258 @@ export function EconomicInsightsCard({ battery, onOutcomeUpdated }) {
   const badge = outcomeBadge();
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-      {/* Header */}
-      <div className="px-6 py-4 bg-gradient-to-r from-slate-900 to-indigo-950 text-white flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-amber-400" />
-            <h3 className="text-lg font-bold">Economic Savings & Circular Mineral Stewardship</h3>
+    <div className="econ-container">
+      {/* Header Bar */}
+      <div className="econ-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+          <div style={{ background: 'rgba(251, 191, 36, 0.15)', color: '#fbbf24', padding: '0.4rem', borderRadius: '8px', display: 'flex' }}>
+            <Sparkles size={18} />
           </div>
-          <p className="text-xs text-slate-300 mt-1">
-            Module 5: Real-world cycler bench testing-time optimization and finite lithium-ion resource recovery.
-          </p>
+          <div>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 800, letterSpacing: '-0.01em', margin: 0 }}>
+              Economic Savings & Circular Resource Stewardship
+            </h3>
+            <p style={{ fontSize: '0.75rem', color: '#94a3b8', margin: '0.2rem 0 0' }}>
+              Realized cycler bench testing-time optimization, operating OpEx reduction, and finite mineral recovery metrics.
+            </p>
+          </div>
         </div>
 
-        <div className={`px-3 py-1.5 rounded-full text-xs font-semibold border flex items-center gap-2 ${badge.bg}`}>
-          <span className={`w-2 h-2 rounded-full ${badge.dot} animate-pulse`} />
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.45rem',
+          padding: '0.35rem 0.75rem',
+          borderRadius: '9999px',
+          fontSize: '0.75rem',
+          fontWeight: 700,
+          background: badge.bg,
+          color: badge.color,
+          border: `1px solid ${badge.border}`
+        }}>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: badge.color }} />
           <span>{badge.label}</span>
         </div>
       </div>
 
-      <div className="p-6 space-y-6">
-        {/* Metric Row 1: Testing Time Optimization */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4 rounded-lg bg-emerald-50 border border-emerald-200">
-            <div className="flex items-center justify-between text-emerald-800 text-xs font-semibold mb-1">
-              <span className="flex items-center gap-1.5">
-                <Clock className="w-4 h-4 text-emerald-600" />
-                Testing-Time Saved
+      {/* 4 Clean Indexed Metrics */}
+      <div className="econ-metrics-grid">
+        {/* Metric 01: Testing Time Saved */}
+        <div className="econ-metric-card" style={{ background: '#f0fdf4', borderColor: '#bbf7d0' }}>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+              <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#166534', letterSpacing: '0.04em' }}>
+                [METRIC 01] • PROVENANCE EFFICIENCY
               </span>
-              <span className="text-[11px] bg-emerald-200/60 px-2 py-0.5 rounded">Per Pack</span>
+              <Clock size={15} color="#16a34a" />
             </div>
-            <div className="text-2xl font-extrabold text-emerald-950">
+            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#14532d', lineHeight: 1.2 }}>
               {econ.testing_time_saved_hours > 0 ? `${econ.testing_time_saved_hours} Hours` : 'Full Test Req.'}
             </div>
-            <div className="text-xs font-medium text-emerald-700 mt-1">
+            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#15803d', marginTop: '0.35rem' }}>
               {econ.testing_savings_label}
             </div>
-            <p className="text-[11px] text-emerald-900/80 mt-2 leading-relaxed">
-              {econ.testing_savings_rationale}
-            </p>
           </div>
+          <p style={{ fontSize: '0.72rem', color: '#166534', marginTop: '0.75rem', lineHeight: 1.45 }}>
+            {econ.testing_savings_rationale}
+          </p>
+        </div>
 
-          <div className="p-4 rounded-lg bg-indigo-50 border border-indigo-200">
-            <div className="flex items-center justify-between text-indigo-800 text-xs font-semibold mb-1">
-              <span className="flex items-center gap-1.5">
-                <Zap className="w-4 h-4 text-indigo-600" />
-                Bench Energy & Labor Saved
+        {/* Metric 02: Bench OpEx Saved */}
+        <div className="econ-metric-card" style={{ background: '#eef2ff', borderColor: '#c7d2fe' }}>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+              <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#3730a3', letterSpacing: '0.04em' }}>
+                [METRIC 02] • OPERATING OPEX
               </span>
-              <span className="text-[11px] bg-indigo-200/60 px-2 py-0.5 rounded">Operating OpEx</span>
+              <Zap size={15} color="#4f46e5" />
             </div>
-            <div className="text-2xl font-extrabold text-indigo-950">
+            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#312e81', lineHeight: 1.2 }}>
               {econ.cycler_cost_saved_estimate}
             </div>
-            <div className="text-xs font-medium text-indigo-700 mt-1">
-              Avoids {econ.testing_time_saved_hours}h electrical cycler degradation
+            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#4338ca', marginTop: '0.35rem' }}>
+              Avoids {econ.testing_time_saved_hours}h cycler electrical draw
             </div>
-            <p className="text-[11px] text-indigo-900/80 mt-2 leading-relaxed">
-              Direct testing equipment labor and kilowatt-hour cycler draw saved by relying on verified provenance data.
-            </p>
           </div>
+          <p style={{ fontSize: '0.72rem', color: '#3730a3', marginTop: '0.75rem', lineHeight: 1.45 }}>
+            Direct laboratory bench labor and cycler kilowatt-hour electricity avoided by relying on verified intake records.
+          </p>
+        </div>
 
-          <div className="p-4 rounded-lg bg-amber-50 border border-amber-200">
-            <div className="flex items-center justify-between text-amber-800 text-xs font-semibold mb-1">
-              <span className="flex items-center gap-1.5">
-                <Recycle className="w-4 h-4 text-amber-600" />
-                Second-Life Extension
+        {/* Metric 03: Critical Minerals Conserved */}
+        <div className="econ-metric-card" style={{ background: '#fffbeb', borderColor: '#fde68a' }}>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+              <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#92400e', letterSpacing: '0.04em' }}>
+                [METRIC 03] • FINITE ELEMENTS
               </span>
-              <span className="text-[11px] bg-amber-200/60 px-2 py-0.5 rounded">Stationary</span>
+              <Recycle size={15} color="#d97706" />
             </div>
-            <div className="text-2xl font-extrabold text-amber-950">
-              +{econ.second_life_extension_years > 0 ? `${econ.second_life_extension_years} Years` : 'Recycle Direct'}
+            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#78350f', lineHeight: 1.2 }}>
+              ~{econ.critical_metals_kg} kg
             </div>
-            <div className="text-xs font-medium text-amber-700 mt-1">
-              Target: Stationary BESS or Float UPS
+            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#b45309', marginTop: '0.35rem' }}>
+              Cathode Elements ({battery.chemistry})
             </div>
-            <p className="text-[11px] text-amber-900/80 mt-2 leading-relaxed">
-              Prevents premature shredding of healthy battery modules by qualifying retained capacity for secondary duty.
+          </div>
+          <p style={{ fontSize: '0.72rem', color: '#92400e', marginTop: '0.75rem', lineHeight: 1.45 }}>
+            Finite virgin lithium, nickel, and cobalt retained within circular secondary storage or closed-loop hydrometallurgy.
+          </p>
+        </div>
+
+        {/* Metric 04: Freshwater Mining Impact Avoided */}
+        <div className="econ-metric-card" style={{ background: '#f0f9ff', borderColor: '#bae6fd' }}>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+              <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#075985', letterSpacing: '0.04em' }}>
+                [METRIC 04] • HYDRO FOOTPRINT
+              </span>
+              <Droplet size={15} color="#0284c7" />
+            </div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0c4a6e', lineHeight: 1.2 }}>
+              ~{Number(econ.water_avoided_liters || 0).toLocaleString()} L
+            </div>
+            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#0369a1', marginTop: '0.35rem' }}>
+              Freshwater Extraction Avoided
+            </div>
+          </div>
+          <p style={{ fontSize: '0.72rem', color: '#075985', marginTop: '0.75rem', lineHeight: 1.45 }}>
+            Conserves clean groundwater that would otherwise be consumed in primary spodumene and brine evaporation mining.
+          </p>
+        </div>
+      </div>
+
+      {/* Lifecycle Disposition Selector */}
+      <div className="econ-disposition-section">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <div>
+            <h4 style={{ fontSize: '0.92rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-primary)', margin: 0 }}>
+              <Building2 size={16} style={{ color: 'var(--primary)' }} />
+              Cascading Lifecycle Disposition Control
+            </h4>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '0.15rem 0 0' }}>
+              Assign verified pack to its next stage. Updates the digital passport and appends a Merkle audit hash.
             </p>
           </div>
-        </div>
-
-        {/* Environmental Minerals Banner */}
-        <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-emerald-100 rounded-lg text-emerald-700">
-              <Droplet className="w-6 h-6" />
-            </div>
-            <div>
-              <h4 className="text-sm font-semibold text-slate-800">
-                Critical Mineral Resource Preservation ({battery.chemistry})
-              </h4>
-              <p className="text-xs text-slate-500">
-                Conserving virgin mining impact for {battery.rated_capacity_kwh} kWh EV battery pack
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-6 text-sm">
-            <div>
-              <div className="text-xs text-slate-500 uppercase font-semibold">Lithium / Nickel / Cobalt</div>
-              <div className="text-lg font-bold text-slate-900">~{econ.critical_metals_kg} kg Recovered</div>
-            </div>
-            <div className="h-8 w-px bg-slate-200 hidden sm:block" />
-            <div>
-              <div className="text-xs text-slate-500 uppercase font-semibold">Freshwater Mining Avoided</div>
-              <div className="text-lg font-bold text-emerald-700">~{econ.water_avoided_liters.toLocaleString()} Liters</div>
-            </div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            Authorized Assessor: <strong>{actorName}</strong>
           </div>
         </div>
 
-        {/* Lifecycle Disposition Selector */}
-        <div className="p-5 rounded-lg border border-indigo-100 bg-gradient-to-br from-indigo-50/40 via-white to-slate-50 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-indigo-600" />
-                Cascading Lifecycle Disposition Control
-              </h4>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Update the official disposition in the digital battery passport and append to the cryptographic audit trail.
-              </p>
-            </div>
-            <div className="text-xs text-slate-500">
-              Recorded Actor: <span className="font-semibold text-slate-800">{actorName}</span>
-            </div>
+        {successMsg && (
+          <div style={{ marginTop: '0.75rem', padding: '0.5rem 0.85rem', background: 'var(--verified-green-bg)', border: '1px solid var(--verified-green-border)', borderRadius: '8px', fontSize: '0.78rem', color: 'var(--verified-green)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <CheckCircle size={15} />
+            <span>{successMsg}</span>
           </div>
+        )}
 
-          {successMsg && (
-            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded text-xs text-emerald-800 flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-              <span>{successMsg}</span>
-            </div>
-          )}
-
-          {errorMsg && (
-            <div className="p-3 bg-rose-50 border border-rose-200 rounded text-xs text-rose-800 flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
-              <span>{errorMsg}</span>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <button
-              type="button"
-              disabled={updating}
-              onClick={() => handleUpdateOutcome('SECOND_LIFE_DEPLOYED')}
-              className={`p-3 rounded-lg border text-left transition-all ${
-                battery.lifecycle_outcome === 'SECOND_LIFE_DEPLOYED'
-                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                  : 'bg-white text-slate-700 border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/50'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-bold flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  Second-Life Storage
-                </span>
-                {battery.lifecycle_outcome === 'SECOND_LIFE_DEPLOYED' && (
-                  <CheckCircle className="w-3.5 h-3.5 text-white" />
-                )}
-              </div>
-              <p className={`text-[11px] leading-tight ${battery.lifecycle_outcome === 'SECOND_LIFE_DEPLOYED' ? 'text-emerald-100' : 'text-slate-500'}`}>
-                Deploy in stationary solar BESS, telecom backup, or low-speed vehicle cluster.
-              </p>
-            </button>
-
-            <button
-              type="button"
-              disabled={updating}
-              onClick={() => handleUpdateOutcome('RECYCLING_PROCESSED')}
-              className={`p-3 rounded-lg border text-left transition-all ${
-                battery.lifecycle_outcome === 'RECYCLING_PROCESSED'
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                  : 'bg-white text-slate-700 border-slate-200 hover:border-blue-300 hover:bg-blue-50/50'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-bold flex items-center gap-1.5">
-                  <Factory className="w-3.5 h-3.5" />
-                  Route to Recycling
-                </span>
-                {battery.lifecycle_outcome === 'RECYCLING_PROCESSED' && (
-                  <CheckCircle className="w-3.5 h-3.5 text-white" />
-                )}
-              </div>
-              <p className={`text-[11px] leading-tight ${battery.lifecycle_outcome === 'RECYCLING_PROCESSED' ? 'text-blue-100' : 'text-slate-500'}`}>
-                Dispatch for hydrometallurgical closed-loop cathode metal recovery.
-              </p>
-            </button>
-
-            <button
-              type="button"
-              disabled={updating}
-              onClick={() => handleUpdateOutcome('QUARANTINE_HOLD')}
-              className={`p-3 rounded-lg border text-left transition-all ${
-                battery.lifecycle_outcome === 'QUARANTINE_HOLD'
-                  ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
-                  : 'bg-white text-slate-700 border-slate-200 hover:border-rose-300 hover:bg-rose-50/50'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-bold flex items-center gap-1.5">
-                  <AlertTriangle className="w-3.5 h-3.5" />
-                  Quarantine / Hold
-                </span>
-                {battery.lifecycle_outcome === 'QUARANTINE_HOLD' && (
-                  <CheckCircle className="w-3.5 h-3.5 text-white" />
-                )}
-              </div>
-              <p className={`text-[11px] leading-tight ${battery.lifecycle_outcome === 'QUARANTINE_HOLD' ? 'text-rose-100' : 'text-slate-500'}`}>
-                Isolate pack for discrepancy investigation, hash review, or destructive testing.
-              </p>
-            </button>
-
-            <button
-              type="button"
-              disabled={updating}
-              onClick={() => handleUpdateOutcome('PENDING_ASSESSMENT')}
-              className={`p-3 rounded-lg border text-left transition-all ${
-                battery.lifecycle_outcome === 'PENDING_ASSESSMENT'
-                  ? 'bg-slate-700 text-white border-slate-700 shadow-sm'
-                  : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400 hover:bg-slate-50'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-bold flex items-center gap-1.5">
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  Pending Assessment
-                </span>
-                {battery.lifecycle_outcome === 'PENDING_ASSESSMENT' && (
-                  <CheckCircle className="w-3.5 h-3.5 text-white" />
-                )}
-              </div>
-              <p className={`text-[11px] leading-tight ${battery.lifecycle_outcome === 'PENDING_ASSESSMENT' ? 'text-slate-300' : 'text-slate-500'}`}>
-                Awaiting physical visual inspection and final qualification bench test.
-              </p>
-            </button>
+        {errorMsg && (
+          <div style={{ marginTop: '0.75rem', padding: '0.5rem 0.85rem', background: 'var(--danger-red-bg)', border: '1px solid var(--danger-red-border)', borderRadius: '8px', fontSize: '0.78rem', color: 'var(--danger-red)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <AlertTriangle size={15} />
+            <span>{errorMsg}</span>
           </div>
+        )}
+
+        <div className="econ-actions-grid">
+          {/* Action 1: Second-Life Storage */}
+          <button
+            type="button"
+            disabled={updating}
+            onClick={() => handleUpdateOutcome('SECOND_LIFE_DEPLOYED')}
+            className={`econ-action-card ${battery.lifecycle_outcome === 'SECOND_LIFE_DEPLOYED' ? 'active' : ''}`}
+            style={{
+              borderColor: battery.lifecycle_outcome === 'SECOND_LIFE_DEPLOYED' ? '#059669' : undefined,
+              background: battery.lifecycle_outcome === 'SECOND_LIFE_DEPLOYED' ? '#ecfdf5' : undefined
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.82rem', fontWeight: 800, color: battery.lifecycle_outcome === 'SECOND_LIFE_DEPLOYED' ? '#065f46' : 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <Sparkles size={14} color="#059669" />
+                Second-Life Storage
+              </span>
+              {battery.lifecycle_outcome === 'SECOND_LIFE_DEPLOYED' && (
+                <CheckCircle size={15} color="#059669" />
+              )}
+            </div>
+            <p style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
+              Deploy in stationary solar BESS, telecom UPS, or microgrid peak-shaving.
+            </p>
+          </button>
+
+          {/* Action 2: Route to Recycling */}
+          <button
+            type="button"
+            disabled={updating}
+            onClick={() => handleUpdateOutcome('RECYCLING_PROCESSED')}
+            className={`econ-action-card ${battery.lifecycle_outcome === 'RECYCLING_PROCESSED' ? 'active' : ''}`}
+            style={{
+              borderColor: battery.lifecycle_outcome === 'RECYCLING_PROCESSED' ? '#0284c7' : undefined,
+              background: battery.lifecycle_outcome === 'RECYCLING_PROCESSED' ? '#f0f9ff' : undefined
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.82rem', fontWeight: 800, color: battery.lifecycle_outcome === 'RECYCLING_PROCESSED' ? '#075985' : 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <Factory size={14} color="#0284c7" />
+                Route to Recycling
+              </span>
+              {battery.lifecycle_outcome === 'RECYCLING_PROCESSED' && (
+                <CheckCircle size={15} color="#0284c7" />
+              )}
+            </div>
+            <p style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
+              Dispatch for hydrometallurgical closed-loop cathode metal recovery.
+            </p>
+          </button>
+
+          {/* Action 3: Quarantine / Hold */}
+          <button
+            type="button"
+            disabled={updating}
+            onClick={() => handleUpdateOutcome('QUARANTINE_HOLD')}
+            className={`econ-action-card ${battery.lifecycle_outcome === 'QUARANTINE_HOLD' ? 'active' : ''}`}
+            style={{
+              borderColor: battery.lifecycle_outcome === 'QUARANTINE_HOLD' ? '#dc2626' : undefined,
+              background: battery.lifecycle_outcome === 'QUARANTINE_HOLD' ? '#fef2f2' : undefined
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.82rem', fontWeight: 800, color: battery.lifecycle_outcome === 'QUARANTINE_HOLD' ? '#991b1b' : 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <AlertTriangle size={14} color="#dc2626" />
+                Quarantine / Hold
+              </span>
+              {battery.lifecycle_outcome === 'QUARANTINE_HOLD' && (
+                <CheckCircle size={15} color="#dc2626" />
+              )}
+            </div>
+            <p style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
+              Isolate pack for discrepancy investigation, hash review, or destructive testing.
+            </p>
+          </button>
+
+          {/* Action 4: Pending Assessment */}
+          <button
+            type="button"
+            disabled={updating}
+            onClick={() => handleUpdateOutcome('PENDING_ASSESSMENT')}
+            className={`econ-action-card ${battery.lifecycle_outcome === 'PENDING_ASSESSMENT' ? 'active' : ''}`}
+            style={{
+              borderColor: battery.lifecycle_outcome === 'PENDING_ASSESSMENT' ? '#475569' : undefined,
+              background: battery.lifecycle_outcome === 'PENDING_ASSESSMENT' ? '#f8fafc' : undefined
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.82rem', fontWeight: 800, color: battery.lifecycle_outcome === 'PENDING_ASSESSMENT' ? '#334155' : 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <RotateCcw size={14} color="#64748b" />
+                Pending Assessment
+              </span>
+              {battery.lifecycle_outcome === 'PENDING_ASSESSMENT' && (
+                <CheckCircle size={15} color="#475569" />
+              )}
+            </div>
+            <p style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
+              Awaiting physical visual inspection and final qualification bench test.
+            </p>
+          </button>
         </div>
       </div>
     </div>

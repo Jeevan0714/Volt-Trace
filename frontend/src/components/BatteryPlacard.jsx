@@ -6,6 +6,7 @@ import { fetchNetworkInfo } from '../api';
 export default function BatteryPlacard({ battery }) {
   const [networkInfo, setNetworkInfo] = useState(null);
   const [useNetworkIp, setUseNetworkIp] = useState(true);
+  const [qrTarget, setQrTarget] = useState('mobile'); // 'mobile' (default for battery casing sticker) | 'desktop'
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -22,7 +23,7 @@ export default function BatteryPlacard({ battery }) {
     typeof window !== 'undefined' &&
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
-  // When on localhost, default to using the PC's Wi-Fi / LAN IP so phones scanning from the monitor can reach the PC!
+  // When on localhost, default to using the PC's Wi-Fi / LAN IP so phones scanning from the monitor or physical printout can reach the PC!
   const resolvedOrigin =
     isLocalhost && networkInfo?.lan_ip && useNetworkIp
       ? `http://${networkInfo.lan_ip}:${window.location.port || '5173'}`
@@ -30,7 +31,11 @@ export default function BatteryPlacard({ battery }) {
       ? window.location.origin
       : 'https://volttrace.io';
 
-  const passportUrl = `${resolvedOrigin}/?id=${battery.id}`;
+  // Physical sticker QR code links directly to mobile intake wizard by default!
+  const passportUrl =
+    qrTarget === 'mobile'
+      ? `${resolvedOrigin}/mobile-intake?id=${battery.id}`
+      : `${resolvedOrigin}/?id=${battery.id}&view=desktop`;
 
   const handlePrint = () => {
     window.print();
@@ -41,6 +46,7 @@ export default function BatteryPlacard({ battery }) {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -116,20 +122,23 @@ export default function BatteryPlacard({ battery }) {
               level="H"
               includeMargin={false}
             />
-            <span style={{ fontSize: '0.65rem', color: '#0f172a', fontWeight: 800, marginTop: '0.45rem', letterSpacing: '0.05em' }}>
-              SCAN PASSPORT
+            <span style={{ fontSize: '0.62rem', color: '#0f172a', fontWeight: 800, marginTop: '0.45rem', letterSpacing: '0.04em', textAlign: 'center' }}>
+              {qrTarget === 'mobile' ? '📱 SCAN WITH PHONE CAMERA' : 'SCAN PASSPORT'}
+            </span>
+            <span style={{ fontSize: '0.55rem', color: '#0369a1', fontWeight: 700, letterSpacing: '0.03em' }}>
+              {qrTarget === 'mobile' ? 'FAST FIELD INTAKE WIZARD' : 'FULL AUDIT DOSSIER'}
             </span>
             {isLocalhost && networkInfo?.lan_ip && (
               <div style={{ marginTop: '0.35rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <span style={{ fontSize: '0.58rem', color: '#64748b', fontWeight: 600 }}>
-                  Target: {useNetworkIp ? 'Wi-Fi IP (Phone Ready)' : 'localhost'}
+                  Network: {useNetworkIp ? `Wi-Fi IP (${networkInfo.lan_ip})` : 'localhost'}
                 </span>
                 <button
                   type="button"
                   onClick={() => setUseNetworkIp(!useNetworkIp)}
                   style={{ fontSize: '0.58rem', color: '#0284c7', background: 'none', border: 'none', cursor: 'pointer', padding: '0.1rem', textDecoration: 'underline' }}
                 >
-                  Toggle to {useNetworkIp ? 'localhost' : 'Wi-Fi IP'}
+                  Switch to {useNetworkIp ? 'localhost' : 'Wi-Fi IP'}
                 </button>
               </div>
             )}
@@ -149,26 +158,45 @@ export default function BatteryPlacard({ battery }) {
       </div>
 
       {/* Helpful Mobile Link Bar */}
-      <div style={{ background: '#f8fafc', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.65rem 0.95rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.78rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}>
-          <Smartphone size={15} color="var(--primary)" />
-          <span><strong>QR Target URL:</strong> <code style={{ color: 'var(--primary)', fontFamily: 'var(--font-mono)' }}>{passportUrl}</code></span>
+      <div style={{ background: '#f8fafc', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.75rem 0.95rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', fontSize: '0.78rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 700, color: '#334155' }}>Placard QR Mode:</span>
+          <div style={{ display: 'flex', gap: '0.35rem' }}>
+            <button
+              type="button"
+              onClick={() => setQrTarget('mobile')}
+              className={`btn ${qrTarget === 'mobile' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ fontSize: '0.75rem', padding: '0.25rem 0.65rem' }}
+            >
+              📱 Mobile Field Intake (Sticker Default)
+            </button>
+            <button
+              type="button"
+              onClick={() => setQrTarget('desktop')}
+              className={`btn ${qrTarget === 'desktop' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ fontSize: '0.75rem', padding: '0.25rem 0.65rem' }}
+            >
+              🖥️ Full Desktop Dossier
+            </button>
+          </div>
         </div>
+
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <button
             type="button"
             onClick={handleCopy}
             className="btn btn-secondary"
-            style={{ fontSize: '0.72rem', padding: '0.3rem 0.6rem' }}
+            style={{ fontSize: '0.72rem', padding: '0.35rem 0.65rem' }}
           >
             {copied ? <Check size={12} color="var(--verified-green)" /> : <Copy size={12} />}
-            <span>{copied ? 'Copied' : 'Copy URL'}</span>
+            <span>{copied ? 'Copied URL' : 'Copy Mobile URL'}</span>
           </button>
-          <button onClick={handlePrint} className="btn btn-secondary" style={{ fontSize: '0.72rem', padding: '0.3rem 0.6rem' }}>
-            <Printer size={12} /> Print Placard
+          <button onClick={handlePrint} className="btn btn-secondary" style={{ fontSize: '0.72rem', padding: '0.35rem 0.65rem' }}>
+            <Printer size={12} /> Print Physical Placard
           </button>
         </div>
       </div>
+
     </div>
   );
 }
