@@ -10,6 +10,12 @@ echo "=========================================================="
 echo "  VoltTrace — Digital Battery Passport & Triage Engine   "
 echo "=========================================================="
 
+# 0. Check dependencies
+if [ ! -f "$DIR/node_modules/.bin/vite" ] && [ ! -f "$DIR/frontend/node_modules/.bin/vite" ]; then
+    echo "Vite not found. Installing frontend dependencies..."
+    npm install
+fi
+
 # 1. Start Python FastAPI Backend
 echo "Starting FastAPI Backend on http://127.0.0.1:8000..."
 cd "$DIR/backend"

@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.db.database import engine, Base, SessionLocal
@@ -48,6 +49,10 @@ app.include_router(routes_documents.router, prefix=settings.API_V1_STR)
 app.include_router(routes_diagnostics.router, prefix=settings.API_V1_STR)
 app.include_router(routes_audit.router, prefix=settings.API_V1_STR)
 app.include_router(routes_service.router, prefix=settings.API_V1_STR)
+
+@app.get("/", include_in_schema=False)
+def root():
+    return RedirectResponse(url=f"{settings.API_V1_STR}/docs")
 
 @app.get(f"{settings.API_V1_STR}/health")
 def health_check():

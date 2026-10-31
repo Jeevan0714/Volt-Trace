@@ -82,6 +82,7 @@ export default function MobileIntake({
   const [submissionResult, setSubmissionResult] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
   const [copiedHash, setCopiedHash] = useState(false);
+  const [copiedUpi, setCopiedUpi] = useState(false);
 
   // Quick battery search dropdown for field testing
   const [showBatteryPicker, setShowBatteryPicker] = useState(false);
@@ -388,6 +389,11 @@ export default function MobileIntake({
         file_hash_sha256: mfgForm.file_hash,
         notes: mfgForm.notes
       };
+      setLastInvoiceMeta({
+        cost: '18500',
+        phone: operator.phone || '+91 98765 43210',
+        upiId: operator.upi_id || 'zypp.mobility@oksbi'
+      });
     } else if (selectedRole === 'ASSEMBLER') {
       selectedFormFile = assemblerForm.file;
       const isReplacement = assemblerForm.action_type === 'Module Replacement' || assemblerForm.module_replaced;
@@ -417,6 +423,11 @@ export default function MobileIntake({
     } else if (selectedRole === 'SELLER') {
       selectedFormFile = sellerForm.file;
       docTypeForRole = 'SERVICE_INVOICE';
+      setLastInvoiceMeta({
+        cost: '4500',
+        phone: operator.phone || '+91 98765 43210',
+        upiId: operator.upi_id || 'zypp.mobility@oksbi'
+      });
       payload = {
         ...payload,
         actor_name: sellerForm.actor_name,
@@ -436,6 +447,11 @@ export default function MobileIntake({
     } else if (selectedRole === 'RECYCLER') {
       selectedFormFile = recyclerForm.file;
       docTypeForRole = 'INSPECTION_REPORT';
+      setLastInvoiceMeta({
+        cost: '6800',
+        phone: operator.phone || '+91 98765 43210',
+        upiId: operator.upi_id || 'zypp.mobility@oksbi'
+      });
       const hasDefects = recyclerForm.swelling_detected || recyclerForm.corrosion_detected || recyclerForm.leak_detected;
       payload = {
         ...payload,
@@ -2121,40 +2137,86 @@ export default function MobileIntake({
                   </div>
                 </div>
 
-                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#34d399', background: 'rgba(5, 150, 105, 0.2)', padding: '0.2rem 0.6rem', borderRadius: '6px', border: '1px solid #059669' }}>
-                  ₹{Number(lastInvoiceMeta.cost || 14500).toLocaleString('en-IN')}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Total:</span>
+                  <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#34d399', background: 'rgba(5, 150, 105, 0.2)', padding: '0.2rem 0.65rem', borderRadius: '6px', border: '1px solid #059669' }}>
+                    ₹{Number(lastInvoiceMeta.cost || 14500).toLocaleString('en-IN')}
+                  </span>
+                </div>
               </div>
 
               {/* UPI QR Code & Payment Details */}
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', background: '#1e293b', padding: '0.85rem', borderRadius: '8px', border: '1px solid #334155', marginBottom: '0.85rem' }}>
-                <div style={{ background: '#ffffff', padding: '0.4rem', borderRadius: '6px', display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', background: '#1e293b', padding: '0.85rem', borderRadius: '8px', border: '1px solid #334155', marginBottom: '0.85rem', flexWrap: 'wrap' }}>
+                <div style={{ background: '#ffffff', padding: '0.5rem', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
                   <QRCodeSVG
                     value={`upi://pay?pa=${encodeURIComponent(lastInvoiceMeta.upiId)}&pn=VoltTrace%20Service%20Depot&am=${lastInvoiceMeta.cost || 14500}&cu=INR&tn=Battery%20${submissionResult.battery_id}%20Service`}
-                    size={88}
+                    size={96}
                     level="M"
                     includeMargin={false}
                   />
-                  <span style={{ fontSize: '0.55rem', fontWeight: 800, color: '#0f172a', marginTop: '0.2rem' }}>
-                    SCAN TO PAY
+                  <span style={{ fontSize: '0.55rem', fontWeight: 800, color: '#0f172a', marginTop: '0.25rem', letterSpacing: '0.04em' }}>
+                    SCAN & PAY UPI
                   </span>
                 </div>
 
-                <div style={{ flex: 1, fontSize: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                <div style={{ flex: 1, minWidth: '180px', fontSize: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
                   <div>
-                    <span style={{ color: '#94a3b8', display: 'block', fontSize: '0.68rem' }}>Workshop UPI ID:</span>
-                    <strong style={{ color: '#38bdf8', fontFamily: 'monospace', fontSize: '0.82rem' }}>
-                      {lastInvoiceMeta.upiId}
-                    </strong>
+                    <span style={{ color: '#94a3b8', display: 'block', fontSize: '0.68rem', marginBottom: '0.1rem' }}>Demo Workshop UPI ID:</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <strong style={{ color: '#38bdf8', fontFamily: 'monospace', fontSize: '0.84rem' }}>
+                        {lastInvoiceMeta.upiId}
+                      </strong>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(lastInvoiceMeta.upiId);
+                          setCopiedUpi(true);
+                          setTimeout(() => setCopiedUpi(false), 2000);
+                        }}
+                        style={{
+                          background: copiedUpi ? '#059669' : '#334155',
+                          border: 'none',
+                          color: '#ffffff',
+                          borderRadius: '4px',
+                          padding: '0.15rem 0.45rem',
+                          fontSize: '0.65rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.2rem'
+                        }}
+                      >
+                        {copiedUpi ? <Check size={11} /> : <Copy size={11} />}
+                        <span>{copiedUpi ? 'Copied' : 'Copy'}</span>
+                      </button>
+                    </div>
                   </div>
+
                   <div>
-                    <span style={{ color: '#94a3b8', display: 'block', fontSize: '0.68rem' }}>Recipient Phone:</span>
-                    <strong style={{ color: '#f8fafc' }}>
-                      {lastInvoiceMeta.phone}
-                    </strong>
+                    <label style={{ color: '#94a3b8', display: 'block', fontSize: '0.68rem', marginBottom: '0.15rem' }}>
+                      Customer WhatsApp Phone:
+                    </label>
+                    <input
+                      type="text"
+                      value={lastInvoiceMeta.phone}
+                      onChange={e => setLastInvoiceMeta({ ...lastInvoiceMeta, phone: e.target.value })}
+                      placeholder="+91 98765 43210"
+                      style={{
+                        width: '100%',
+                        background: '#0f172a',
+                        border: '1px solid #38bdf8',
+                        borderRadius: '6px',
+                        padding: '0.35rem 0.55rem',
+                        color: '#f8fafc',
+                        fontSize: '0.78rem',
+                        fontWeight: 600
+                      }}
+                    />
                   </div>
-                  <div style={{ fontSize: '0.65rem', color: '#10b981' }}>
-                    ✓ GPay, PhonePe, Paytm & BHIM Accepted
+
+                  <div style={{ fontSize: '0.65rem', color: '#10b981', fontWeight: 600 }}>
+                    ✓ GPay • PhonePe • Paytm • BHIM • Any UPI App
                   </div>
                 </div>
               </div>
@@ -2166,7 +2228,7 @@ export default function MobileIntake({
                   type="button"
                   onClick={async () => {
                     try {
-                      // 1. Generate PDF
+                      // 1. Generate PDF with embedded UPI QR Code
                       const res = await generateServiceInvoicePDF({
                         battery,
                         submissionResult,
@@ -2175,20 +2237,29 @@ export default function MobileIntake({
                       
                       const file = new File([res.blob], res.filename, { type: 'application/pdf' });
 
-                      // 2. Upload to server so there's an instant one-click direct PDF link
+                      // 2. Upload to server for instant 1-click download link
+                      let serverDownloadUrl = '';
                       try {
                         const formData = new FormData();
                         formData.append('file', file);
                         formData.append('filename', res.filename);
-                        await fetch(`/api/v1/batteries/${submissionResult.battery_id}/documents/save-invoice`, {
+                        const upRes = await fetch(`/api/v1/batteries/${submissionResult.battery_id}/documents/save-invoice`, {
                           method: 'POST',
                           body: formData
                         });
+                        if (upRes.ok) {
+                          const upData = await upRes.json();
+                          serverDownloadUrl = `${window.location.protocol}//${window.location.host}${upData.download_url}`;
+                        }
                       } catch (upErr) {
                         console.warn('Invoice server save notice:', upErr);
                       }
 
-                      // 3. Try Native Android / iOS Web Share first (if supported by browser)
+                      if (!serverDownloadUrl) {
+                        serverDownloadUrl = `${window.location.protocol}//${window.location.host}/api/v1/batteries/${submissionResult.battery_id}/documents/invoices/${res.filename}`;
+                      }
+
+                      // 3. Try Native Android / iOS Web Share first (if supported by mobile browser)
                       let sharedSuccessfully = false;
                       if (navigator.canShare && navigator.canShare({ files: [file] })) {
                         try {
@@ -2203,29 +2274,30 @@ export default function MobileIntake({
                         }
                       }
 
-                      // 4. Direct WhatsApp URL fallback with 1-click PDF link
+                      // 4. Direct WhatsApp URL fallback with 1-click PDF link & UPI Pay Link
                       if (!sharedSuccessfully) {
-                        const directPdfUrl = `${window.location.protocol}//${window.location.host}/api/v1/batteries/${submissionResult.battery_id}/documents/invoices/${res.filename}`;
                         const cleanPhone = (lastInvoiceMeta.phone || '').replace(/[^0-9]/g, '');
                         
-                        const msg = `*VOLTTRACE OFFICIAL SERVICE INVOICE & BATTERY PASSPORT*%0A` +
-                          `━━━━━━━━━━━━━━━━━━━━━━%0A` +
-                          `🔋 *Battery ID:* ${submissionResult.battery_id}%0A` +
-                          `🔧 *Service:* ${submissionResult.event_title}%0A` +
-                          `👨‍🔧 *Technician:* ${submissionResult.actor_name || 'Technician Sharma'} (${submissionResult.organization || 'Zypp Mobility Hub'})%0A` +
-                          `💰 *Total Amount:* Rs. ${Number(lastInvoiceMeta.cost || 14500).toLocaleString('en-IN')}%0A` +
-                          `💳 *UPI ID:* ${lastInvoiceMeta.upiId}%0A` +
-                          `🟢 *Status:* Up to Date%0A` +
-                          `🔐 *SHA-256 Hash:* ${(submissionResult.audit_hash || '').slice(0, 24)}...%0A` +
-                          `━━━━━━━━━━━━━━━━━━━━━━%0A` +
-                          `📥 *DOWNLOAD & VIEW OFFICIAL PDF INVOICE:*%0A` +
-                          `${directPdfUrl}%0A%0A` +
-                          `📄 *View Live Battery Passport Dossier:*%0A` +
+                        const rawMsg = `*VOLTTRACE OFFICIAL SERVICE INVOICE & BATTERY PASSPORT*\n` +
+                          `━━━━━━━━━━━━━━━━━━━━━━\n` +
+                          `🔋 *Battery ID:* ${submissionResult.battery_id}\n` +
+                          `🔧 *Service:* ${submissionResult.event_title}\n` +
+                          `👨‍🔧 *Technician:* ${submissionResult.actor_name || 'Technician Sharma'} (${submissionResult.organization || 'Zypp Mobility Hub'})\n` +
+                          `💰 *Total Amount:* Rs. ${Number(lastInvoiceMeta.cost || 14500).toLocaleString('en-IN')}\n` +
+                          `💳 *Demo UPI ID:* ${lastInvoiceMeta.upiId}\n` +
+                          `📲 *UPI Instant Pay Link:* upi://pay?pa=${lastInvoiceMeta.upiId}&pn=VoltTrace%20Service%20Depot&am=${lastInvoiceMeta.cost || 14500}&cu=INR&tn=Battery%20${submissionResult.battery_id}%20Service\n` +
+                          `🟢 *Status:* ${submissionResult.passport_status === 'UP_TO_DATE' ? 'Verified & Up to Date' : 'Flagged / Monitored'}\n` +
+                          `🔐 *SHA-256 Hash:* ${(submissionResult.audit_hash || '').slice(0, 24)}...\n` +
+                          `━━━━━━━━━━━━━━━━━━━━━━\n` +
+                          `📥 *DOWNLOAD OFFICIAL PDF INVOICE (WITH UPI QR CODE):*\n` +
+                          `${serverDownloadUrl}\n\n` +
+                          `📄 *View Live Battery Passport Dossier:*\n` +
                           `${window.location.origin}/mobile-intake?id=${submissionResult.battery_id}`;
 
+                        const encodedMsg = encodeURIComponent(rawMsg);
                         const waTarget = cleanPhone.length >= 10
-                          ? `https://wa.me/${cleanPhone}?text=${msg}`
-                          : `https://wa.me/?text=${msg}`;
+                          ? `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedMsg}`
+                          : `https://api.whatsapp.com/send?text=${encodedMsg}`;
 
                         window.open(waTarget, '_blank');
                       }
@@ -2254,7 +2326,56 @@ export default function MobileIntake({
                   <span>Send PDF Invoice to WhatsApp ({lastInvoiceMeta.phone})</span>
                 </button>
 
-                {/* 2. Direct Safe Download Button (Uses ObjectURL Blob so Chrome doesn't flag as insecure) */}
+                {/* 2. Direct Instant WhatsApp Chat Button */}
+                {(() => {
+                  const cleanPhone = (lastInvoiceMeta.phone || '').replace(/[^0-9]/g, '');
+                  const rawMsg = `*VOLTTRACE OFFICIAL SERVICE INVOICE & BATTERY PASSPORT*\n` +
+                    `━━━━━━━━━━━━━━━━━━━━━━\n` +
+                    `🔋 *Battery ID:* ${submissionResult.battery_id}\n` +
+                    `🔧 *Action Logged:* ${submissionResult.event_title}\n` +
+                    `👨‍🔧 *Technician:* ${submissionResult.actor_name || 'Technician Sharma'} (${submissionResult.organization || 'Zypp Mobility Hub'})\n` +
+                    `💰 *Total Amount:* Rs. ${Number(lastInvoiceMeta.cost || 14500).toLocaleString('en-IN')}\n` +
+                    `💳 *Demo UPI ID:* ${lastInvoiceMeta.upiId}\n` +
+                    `📲 *Pay via UPI:* upi://pay?pa=${lastInvoiceMeta.upiId}&pn=VoltTrace%20Service%20Depot&am=${lastInvoiceMeta.cost || 14500}&cu=INR&tn=Battery%20${submissionResult.battery_id}%20Service\n` +
+                    `🟢 *Passport Status:* ${submissionResult.passport_status === 'UP_TO_DATE' ? 'Verified & In Fleet' : 'Flagged / Monitored'}\n` +
+                    `🔐 *SHA-256 Ledger Hash:* ${(submissionResult.audit_hash || '').slice(0, 24)}...\n` +
+                    `━━━━━━━━━━━━━━━━━━━━━━\n` +
+                    `📄 *View Official Digital Passport:*\n` +
+                    `${window.location.origin}/mobile-intake?id=${submissionResult.battery_id}`;
+
+                  const encodedMsg = encodeURIComponent(rawMsg);
+                  const waUrl = cleanPhone.length >= 10
+                    ? `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedMsg}`
+                    : `https://api.whatsapp.com/send?text=${encodedMsg}`;
+
+                  return (
+                    <a
+                      href={waUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        width: '100%',
+                        background: '#1e293b',
+                        border: '1px solid #059669',
+                        color: '#34d399',
+                        borderRadius: '8px',
+                        padding: '0.7rem',
+                        fontSize: '0.82rem',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.45rem',
+                        textDecoration: 'none'
+                      }}
+                    >
+                      <MessageSquare size={16} color="#34d399" />
+                      <span>Open Direct WhatsApp Chat with Invoice & UPI</span>
+                    </a>
+                  );
+                })()}
+
+                {/* 3. Direct Safe Download Button (Uses ObjectURL Blob so Chrome doesn't flag as insecure) */}
                 <button
                   type="button"
                   onClick={async () => {
@@ -2277,8 +2398,8 @@ export default function MobileIntake({
                     background: '#0284c7',
                     color: '#ffffff',
                     borderRadius: '8px',
-                    padding: '0.75rem',
-                    fontSize: '0.85rem',
+                    padding: '0.72rem',
+                    fontSize: '0.82rem',
                     fontWeight: 700,
                     display: 'flex',
                     alignItems: 'center',
@@ -2289,75 +2410,9 @@ export default function MobileIntake({
                     boxShadow: '0 4px 12px rgba(2, 132, 199, 0.3)'
                   }}
                 >
-                  <Download size={16} />
-                  <span>Download PDF Invoice File (Offline Copy)</span>
+                  <Download size={15} />
+                  <span>Download PDF Invoice File (Offline Copy with UPI QR)</span>
                 </button>
-                    background: '#0284c7',
-                    color: '#ffffff',
-                    borderRadius: '8px',
-                    padding: '0.75rem',
-                    fontSize: '0.85rem',
-                    fontWeight: 700,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.5rem',
-                    border: 'none',
-                    cursor: 'pointer',
-                    boxShadow: '0 4px 12px rgba(2, 132, 199, 0.3)'
-                  }}
-                >
-                  <Download size={16} />
-                  <span>Download PDF Invoice File (Offline Copy)</span>
-                </button>
-
-                {/* 3. Text & Link Fallback */}
-                {(() => {
-                  const cleanPhone = (lastInvoiceMeta.phone || '').replace(/[^0-9]/g, '');
-                  const invoiceText = `*VOLTTRACE OFFICIAL SERVICE INVOICE & BATTERY PASSPORT*%0A` +
-                    `━━━━━━━━━━━━━━━━━━━━━━%0A` +
-                    `🔋 *Battery ID:* ${submissionResult.battery_id}%0A` +
-                    `🔧 *Action Logged:* ${submissionResult.event_title}%0A` +
-                    `👨‍🔧 *Technician:* ${submissionResult.actor_name || 'Technician Sharma'} (${submissionResult.organization || 'Zypp Mobility Hub'})%0A` +
-                    `💰 *Total Amount:* Rs. ${Number(lastInvoiceMeta.cost || 14500).toLocaleString('en-IN')}%0A` +
-                    `💳 *UPI ID:* ${lastInvoiceMeta.upiId}%0A` +
-                    `🟢 *Passport Status:* ${submissionResult.passport_status === 'UP_TO_DATE' ? 'Verified & In Fleet' : 'Flagged / Monitored'}%0A` +
-                    `🔐 *SHA-256 Ledger Hash:* ${(submissionResult.audit_hash || '').slice(0, 24)}...%0A` +
-                    `━━━━━━━━━━━━━━━━━━━━━━%0A` +
-                    `📄 *View Official Digital Passport:*%0A` +
-                    `${window.location.origin}/mobile-intake?id=${submissionResult.battery_id}%0A%0A` +
-                    `_Tap 'Share PDF Invoice Directly to WhatsApp' on your phone to send the full PDF document._`;
-
-                  const waUrl = cleanPhone.length >= 10
-                    ? `https://wa.me/${cleanPhone}?text=${invoiceText}`
-                    : `https://wa.me/?text=${invoiceText}`;
-
-                  return (
-                    <a
-                      href={waUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        width: '100%',
-                        background: '#1e293b',
-                        border: '1px solid #334155',
-                        color: '#94a3b8',
-                        borderRadius: '8px',
-                        padding: '0.65rem',
-                        fontSize: '0.78rem',
-                        fontWeight: 600,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.4rem',
-                        textDecoration: 'none'
-                      }}
-                    >
-                      <MessageSquare size={14} color="#34d399" />
-                      <span>Send Summary Text to WhatsApp ({lastInvoiceMeta.phone})</span>
-                    </a>
-                  );
-                })()}
               </div>
             </div>
 
